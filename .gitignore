@@ -1,0 +1,16 @@
+bin
+lib
+*~
+#*
+*.o
+*.a
+*.exe
+*.lib
+*.cache
+log
+Makefile
+lib*.pc
+.project
+.cproject
+CMakeLists.txt.user
+exec

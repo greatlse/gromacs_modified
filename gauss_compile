@@ -1,0 +1,38 @@
+#!/bin/csh -x
+set GROMACS_HOME = "$HOME/GROMACS/gromacs-4.5.4_GSHMC"
+set MPI_HOME = "/opt/openmpi"
+set suff = "_d_mpi_gshmc"
+
+set CPPFLAGS = "-I/$HOME/GROMACS/fftw-3.3/include -I/$MPI_HOME/include" 
+set MPICC = "$MPI_HOME/bin/mpicc"
+set LDFLAGS = "-L/$HOME/GROMACS/fftw-3.3/lib -L/usr/lib -L/$MPI_HOME/lib"
+set LIBS = "$HOME/GROMACS/fftw-3.3/lib/libfftw3.so.3 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread"
+set CFLAGS = " -O3 "
+set CXX = "icpc"
+set CC = "icc"
+set F77 = "ifort"
+
+#make clean
+
+cmake -D FFTW3_INCLUDE_DIR=$HOME/GROMACS/fftw-3.3/include \
+      -D FFTW3_LIBRARIES=$HOME/GROMACS/fftw-3.3/lib/libfftw3.a \
+      -D GMX_THREADS:BOOL=ON \
+      -D CMAKE_BUILD_TYPE=Release \
+      -D CMAKE_INSTALL_PREFIX=$GROMACS_HOME/exec/ \
+      -D GMX_DOUBLE=ON \
+      -D CMAKE_CXX_COMPILER=$MPI_HOME/bin/mpicxx \
+      -D CMAKE_C_COMPILER=$MPI_HOME/bin/mpicc \
+      -D GMX_EXTERNAL_LAPACK=ON \
+      -D GMX_EXTERNAL_BLAS=ON \
+      -D GMX_GSL=ON \
+      -D BUILD_SHARED_LIBS=ON \
+      -D GMX_MPI=ON \
+      -D GMX_DEFAULT_SUFFIX=OFF \
+      -D GMX_BINARY_SUFFIX=$suff \
+      -D GMX_LIBS_SUFFIX=$suff \
+      $GROMACS_HOME
+
+make -j 4
+
+make install
+make install-mdrun
