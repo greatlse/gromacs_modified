@@ -58,48 +58,108 @@ static void low_mspeed2(FILE *fplog, t_commrec *cr, real tempi, t_mdatoms *mdato
   }
 }
 
-/* Function for performing Metroplis test in GSHMC */
-int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *old[7], t_state *new[7], double dDeltaXi,
-               real Uold, real Unew, gmx_rng_t rng, int iTest, real Etot, int iTrial, double *weight, 
-               gmx_large_int_t step)
+/* Function for performing Pande test in GSHMC */
+int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7], t_state *candidate[7], double dDeltaXi,
+               real Ucurrent, real Ucandidate, gmx_rng_t rng, int iTest, real Etot, int iTrial, double *weight, 
+               gmx_large_int_t step, gmx_bool *bFlip)
 {
-  /* Calculate shadow hamiltonian for new position and momentum */
-  real dShadowHamNew = shadow(mtop, ir, new, Unew);
+  /* Calculate shadow hamiltonian for candidate position and momentum */
+  real dShadowHamCand = shadow(mtop, ir, candidate, Ucandidate);
 
-  /* Calculate shadow hamiltonian for old position and momentum */
-  real dShadowHamOld = shadow(mtop, ir, old, Uold);
-  
-  real dDelta_H = dShadowHamNew - dShadowHamOld;
+  /* Calculate shadow hamiltonian for current position and momentum */
+  real dShadowHamCurr = shadow(mtop, ir, current, Ucurrent);
+
+  real dDelta_H = dShadowHamCand - dShadowHamCurr;
   real dBeta = 1.0 / (BOLTZ*ir->dTempi);
-  real dProbability = 0.0;
+  real dProbabilityA = 0.0;
+  real dProbabilityS = 0.0;
 
   real dExponent = -dBeta * (dDelta_H + dDeltaXi);
+  real dExponent2 = -dBeta * (-dDelta_H + dDeltaXi);
 
-  /* Perform Metropolis test */
+  static int iResultPrev = REJECTED;
+
+  static real dProbabilityAPrevInv = 0.0;
+
   int iResult = 0;
-  if (dExponent > 0.0)
+
+  bFlip = FALSE;
+
+  /* We choose which test we perform */
+  if (ir->bPandeTest && iTest == MDMC)
   {
-     iResult = ACCEPTED;
-     dProbability = 1.0;
+     /* Perform Pande test */
+     if (dExponent > 0.0)
+     {
+        iResult = ACCEPTED;
+        /* Calculate the acceptance probability */
+        dProbabilityA = 1.0;
+     }
+     else
+     {
+        dProbabilityA = exp(dExponent);
+        /* Perform the test */
+        real dAlpha = gmx_rng_uniform_real(rng);
+        if (dAlpha < dProbabilityA)
+           iResult = ACCEPTED;
+        else
+        {
+           /* Calculate the self-transition probability */
+           if (iResultPrev == ACCEPTED)
+           {
+              if ((dProbabilityA/dProbabilityAPrevInv) * (1 - dProbabilityAPrevInv) < 1 - dProbabilityA)
+                 dProbabilityS = (dProbabilityA/dProbabilityAPrevInv) * (1 - dProbabilityAPrevInv);
+              else
+                 dProbabilityS = (1 - dProbabilityA);
+           }
+           else
+              dProbabilityS = 0;
+           /* Continue performing the test */
+           if (dAlpha < dProbabilityA + dProbabilityS)
+              iResult = REJECTED;
+           else
+           {
+              iResult = REJECTED;
+              bFlip = TRUE;
+           }
+        }
+     }
+     /* Update if the movement was accepted or not and with which probability */
+     iResultPrev = iResult;
+     if (dProbabilityA <= 1.0)
+        dProbabilityAPrevInv = 1;
+     else
+        dProbabilityAPrevInv = exp(dExponent2);
   }
   else
   {
-     dProbability = exp(dExponent);
-     real dAlpha = gmx_rng_uniform_real(rng); 
-     if (dAlpha < dProbability)
+     /* Perform metropolis test */
+     if (dExponent > 0.0)
+     {
         iResult = ACCEPTED;
-     else 
-        iResult = REJECTED;
+        dProbabilityA = 1.0;
+     }
+     else
+     {
+        dProbabilityA = exp(dExponent);
+        real dAlpha = gmx_rng_uniform_real(rng); 
+        if (dAlpha < dProbabilityA)
+           iResult = ACCEPTED;
+        else 
+           iResult = REJECTED;
+     }
   }
 
 /* PRUEBA */
-//iResult = REJECTED;
+// iResult = REJECTED;
 /* PRUEBA */
 
   static int MDMCcount = 0;
   static int PMMCcount = 0;
   static int MDMCaccepted = 0;
   static int PMMCaccepted = 0;
+  static int PandeSelf = 0;
+  static int PandeFlip = 0;
 
   char sMessage[255];
   if (iTest == MDMC)
@@ -110,12 +170,19 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *old[7], t
         MDMCaccepted++;
 
         /* Calculate reweight and output for autocorrelating */
-        *weight = exp( -dBeta * (Etot - dShadowHamNew));
+        *weight = exp( -dBeta * (Etot - dShadowHamCand));
+     }
+     else if (ir->bPandeTest)
+     {
+        if (bFlip == FALSE)
+           PandeSelf++;
+        else
+           PandeFlip++;
      }
      sprintf(sMessage, 
           "\nMDMC step %s, with probability %f. Total accepted = %d. Acceptance rate = %f. \n",
           (iResult==ACCEPTED? "ACCEPTED": "REJECTED"), 
-          dProbability,
+          dProbabilityA,
           (iTest==MDMC? MDMCaccepted: PMMCaccepted),
           (iTest==MDMC? MDMCaccepted / (float) MDMCcount : PMMCaccepted / (float) PMMCcount)
          ); 
@@ -130,7 +197,7 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *old[7], t
           "PMMC step \(trial %d\) %s, with probability %f. Total accepted = %d. Acceptance rate = %f. \n",
           iTrial,
           (iResult==ACCEPTED? "ACCEPTED": "REJECTED"), 
-          dProbability,
+          dProbabilityA,
           (iTest==MDMC? MDMCaccepted: PMMCaccepted),
           (iTest==MDMC? MDMCaccepted / (float) MDMCcount : PMMCaccepted / (float) PMMCcount)
          ); 
@@ -141,10 +208,16 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *old[7], t
   printf("%s", sMessage);
   fprintf(fplog, "%s", sMessage);
 
-  fprintf(fplog, "dShadowHamNew = %f, dShadowHamOld = %f \nTotal Energy = %f \n", dShadowHamNew, dShadowHamOld, Etot);
-  printf("dShadowHamNew = %f, dShadowHamOld = %f \nTotal Energy = %f \n", dShadowHamNew, dShadowHamOld, Etot);
+  fprintf(fplog, "dShadowHamCand = %f, dShadowHamCurr = %f \nTotal Energy = %f \n", dShadowHamCand, dShadowHamCurr, Etot);
+  printf("dShadowHamCand = %f, dShadowHamCurr = %f \nTotal Energy = %f \n", dShadowHamCand, dShadowHamCurr, Etot);
 
   printf("dExponent = %f, dDelta_H = %f, dDeltaXi = %f \n", dExponent, dDelta_H, dDeltaXi);
+
+  if (ir->bPandeTest && iTest == MDMC && iResult == REJECTED)
+  {
+     printf("Total self-transitions %d and total flipping transitions %d. \n", PandeSelf, PandeFlip);
+     fprintf(fplog, "Total self-transitions %d and total flipping transitions %d. \n", PandeSelf, PandeFlip);
+  }
 
   return iResult;
 }
@@ -305,7 +378,7 @@ void momentum_update(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms
   }
 
   /* perform the partial momentum update */
-  /* also calculate dDeltaXi for the metropolis test later */
+  /* also calculate dDeltaXi for the Pande test later */
   *dDeltaXi = 0.0;
   copy_rvecn(state->v, vel, 0, state->natoms);
 
@@ -512,7 +585,6 @@ void backup_state(t_state *state_a, t_state *state_b, rvec **f_a, rvec **f_b)
 
 // printf("\n ... leaving backup_state ... \n");
 }
-
 
 static void sampling(real tempi, t_mdatoms *mdatoms, rvec xi[], gmx_rng_t rng)
 {

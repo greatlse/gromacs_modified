@@ -25,6 +25,9 @@ cmake -D FFTW3_INCLUDE_DIR=/usr/include \
       -D CMAKE_BUILD_TYPE=Release \
       -D CMAKE_INSTALL_PREFIX=$GROMACS_HOME/exec/ \
       -D GMX_DOUBLE=ON \
+      -D GMX_DEFAULT_SUFFIX=OFF \
+      -D GMX_BINARY_SUFFIX=$suff \
+      -D GMX_LIBS_SUFFIX=$suff \
       $GROMACS_HOME
 
 make -j 4

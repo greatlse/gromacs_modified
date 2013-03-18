@@ -64,7 +64,7 @@
 #include "mtop_util.h"
 
 /* This number should be increased whenever the file format changes! */
-static const int tpx_version = 74;
+static const int tpx_version = 75;
 
 /* This number should only be increased when you edit the TOPOLOGY section
  * of the tpx format. This way we can maintain forward compatibility too
@@ -916,7 +916,7 @@ static void do_inputrec(t_fileio *fio, t_inputrec *ir,gmx_bool bRead,
     }    
 
     /* GSHMC */
-    if (file_version>=74)
+    if (file_version >= 74)
     {
        gmx_fio_do_gmx_bool(fio, ir->bGSHMC);  // flag for using GSHMC or not
        gmx_fio_do_real(fio, ir->dPhi);     // parameter for partial momentum update in GSHMC
@@ -927,6 +927,10 @@ static void do_inputrec(t_fileio *fio, t_inputrec *ir,gmx_bool bRead,
        gmx_fio_do_real(fio, ir->dTempi);   // temperature of the canonical ensemble
        gmx_fio_do_gmx_bool(fio, ir->bMomFlip);  // momentum flip after MDMC rejection or not
     }
+
+    /* Pande test */
+    if (file_version >= 75)
+       gmx_fio_do_gmx_bool(fio, ir->bPandeTest);
 }
 
 

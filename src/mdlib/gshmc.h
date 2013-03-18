@@ -2,9 +2,12 @@ enum GSHMC_part {NONE, MDMC, PMMC};
 enum leap {back3, back2, back1, curre, forw1, forw2, forw3};
 enum test {REJECTED, ACCEPTED};
 
+/*int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *befor[7], t_state *after[7], double dDeltaXi,
+               real Uold, real Unew, gmx_rng_t rng, int iTest, real Etot, int iTrial, double *weight,
+               gmx_large_int_t step);*/
 int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *befor[7], t_state *after[7], double dDeltaXi,
                real Uold, real Unew, gmx_rng_t rng, int iTest, real Etot, int iTrial, double *weight,
-               gmx_large_int_t step);
+               gmx_large_int_t step, gmx_bool *bFlip);
 
 /* Function for calculating shadow hamiltonians in GSHMC */
 double shadow(gmx_mtop_t *mtop, t_inputrec *inputrec, t_state *x[7], real Upot);

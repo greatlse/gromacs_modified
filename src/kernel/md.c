@@ -1229,6 +1229,8 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
        int iCountX=1, iCountV=1, iCountF=1, iCountXTC=1, iCountE=1;
        int seed;
        gmx_rng_t rng;
+       /* used for Pande test */
+       gmx_bool bFlip = FALSE;
  
        /* with domain decomposition, energy must be calculated at every step 
           of the interpolation */
@@ -2357,21 +2359,21 @@ if (ir->bGSHMC) {
 
               if (i == forw3)
               {
-                 /* We perform metropolis test for the last iL molecular dynamics steps.  */
+                 /* We perform a test, either metropolis or Pande */
                  if (MASTER(cr))
                  {
                     real Etot = enerd->term[F_EKIN] + enerd->term[F_EPOT];
                     iMetro = metropolis(fplog, top_global, ir, g_beforMD, g_afterMD, 0.0, 
-                                        u_beforMD, u_afterMD, rng, MDMC, Etot, iTrial, &weight, step);
+                                       u_beforMD, u_afterMD, rng, MDMC, Etot, iTrial, &weight, step, &bFlip);
                  }
                  if (PAR(cr))
                     gmx_bcast(sizeof(int), &iMetro, cr);
 
-                 /* if test is REJECTED, recover state beforMD, flip the momentum and go on to PMMC  */
+                 /* if test is REJECTED, recover state beforMD, flip the momentum (if it is necessary) and go on to PMMC  */
                  if (iMetro == REJECTED)
                  {
                     /* Momentum FLip */
-                    if (ir->bMomFlip)
+                    if ((ir->bPandeTest && bFlip == TRUE) || (!(ir->bPandeTest) && ir->bMomFlip))
                     {
                        for (i=back3; i<=forw3; i++)
                           momentum_flip(s_beforMD[i]->natoms, s_beforMD[i]->v);
@@ -2537,7 +2539,7 @@ reload: // goto point for momentum update retrials
                  if (MASTER(cr))
                     backup_state(state_global, g_beforMD[forw3], NULL, NULL);
 
-                 /* Perform Metropolis test for the updated momentum */
+                 /* Perform metropolis test for the updated momentum */
                  if (MASTER(cr))
                  {
                     if (debug)
@@ -2546,8 +2548,9 @@ reload: // goto point for momentum update retrials
                        printf("PMMC step is: forward +3 \n"); 
                     }
                     real Etot = enerd->term[F_EKIN] + enerd->term[F_EPOT];
+                    /* We make sure not to perform Pande test */
                     iMetro = metropolis(fplog, top_global, ir, g_afterMD, g_beforMD, dDeltaXi, 
-                                        u_beforMD, u_beforMD, rng, PMMC, Etot, iTrial, &weight, step); 
+                                        u_beforMD, u_beforMD, rng, PMMC, Etot, iTrial, &weight, step, &bFlip); 
                  }
                  if (PAR(cr))
                     gmx_bcast(sizeof(int), &iMetro, cr);

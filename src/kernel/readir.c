@@ -1186,6 +1186,9 @@ void get_ir(const char *mdparin,const char *mdparout,
   EETYPE("momentum_flip",         ir->bMomFlip,   yesno_names);
 #undef CTYPE
 
+  /* Pande test */
+  EETYPE ("pande_test",   ir->bPandeTest,  yesno_names);
+
   write_inpfile(mdparout,ninp,inp,FALSE,wi);
   for (i=0; (i<ninp); i++) {
     sfree(inp[i].name);
