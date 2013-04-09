@@ -126,7 +126,7 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7
      }
      /* Update if the movement was accepted or not and with which probability */
      iResultPrev = iResult;
-     if (dProbabilityA <= 1.0)
+     if (dExponent2 > 0)
         dProbabilityAPrevInv = 1;
      else
         dProbabilityAPrevInv = exp(dExponent2);
@@ -215,8 +215,8 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7
 
   if (ir->bPandeTest && iTest == MDMC && iResult == REJECTED)
   {
-     printf("Total self-transitions %d and total flipping transitions %d. \n", PandeSelf, PandeFlip);
-     fprintf(fplog, "Total self-transitions %d and total flipping transitions %d. \n", PandeSelf, PandeFlip);
+     printf("Total self-transitions %d and total flipping transitions %d with self-transition probability %f. \n", PandeSelf, PandeFlip, dProbabilityS);
+     fprintf(fplog, "Total self-transitions %d and total flipping transitions %d with self-transition probability %f. \n", PandeSelf, PandeFlip, dProbabilityS);
   }
 
   return iResult;
