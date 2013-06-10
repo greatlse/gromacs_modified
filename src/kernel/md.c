@@ -329,7 +329,7 @@ static real compute_conserved_from_auxiliary(t_inputrec *ir, t_state *state, t_e
     real quantity = 0;
     switch (ir->etc) 
     {
-    case etcNO:
+    case etcNO:             
         break;
     case etcBERENDSEN:
         break;
@@ -1226,6 +1226,10 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
        rvec    *f_afterMD[7] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL};
        real    u_beforMD = 0.0;
        real    u_afterMD = 0.0;
+       real    k_beforMD = 0.0;
+       real    k_afterMD = 0.0;
+       real    Etot_beforMD = 0.0;
+       real    Etot_afterMD = 0.0;
        int iCountX=1, iCountV=1, iCountF=1, iCountXTC=1, iCountE=1;
        int seed;
        gmx_rng_t rng;
@@ -1614,6 +1618,8 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     /* need to make an initiation call to get the Trotter variables set, as well as other constants for non-trotter
        temperature control */
     trotter_seq = init_npt_vars(ir,state,&MassQ,bTrotter);
+    if (ir->epc == epcANDERSEN)
+        state->q = state->vol0;
     
     if (MASTER(cr))
     {
@@ -2127,14 +2133,14 @@ if ( (GSHMC_part == MDMC && stepMD%ir->iL <= forw3) || GSHMC_part == PMMC )
             mu_aver = calc_mu_aver(cr,state->x,mdatoms->chargeA,
                                    mu_tot,&top_global->mols,mdatoms,gnx,grpindex);
         }
-        
+
         if (bTCR && bFirstStep)
         {
             tcr=init_coupling(fplog,nfile,fnm,cr,fr,mdatoms,&(top->idef));
             fprintf(fplog,"Done init_coupling\n"); 
             fflush(fplog);
         }
-        
+
         if (bVV && !bStartingFromCpt && !bRerunMD)
         /*  ############### START FIRST UPDATE HALF-STEP FOR VV METHODS############### */
         {
@@ -2156,7 +2162,7 @@ if ( (GSHMC_part == MDMC && stepMD%ir->iL <= forw3) || GSHMC_part == PMMC )
                           f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
                           ekind,M,wcycle,upd,bInitStep,etrtVELOCITY1,
                           cr,nrnb,constr,&top->idef);
-            
+
             if (bIterations)
             {
                 gmx_iterate_init(&iterate,bIterations && !bInitStep);
@@ -2165,12 +2171,12 @@ if ( (GSHMC_part == MDMC && stepMD%ir->iL <= forw3) || GSHMC_part == PMMC )
                the calculations */
 
             /*#### UPDATE EXTENDED VARIABLES IN TROTTER FORMULATION */
-            
+
             /* save the state */
             if (bIterations && iterate.bIterate) { 
                 copy_coupling_state(state,bufstate,ekind,ekind_save,&(ir->opts));
             }
-            
+
             bFirstIterate = TRUE;
             while (bFirstIterate || (bIterations && iterate.bIterate))
             {
@@ -2331,8 +2337,16 @@ if (ir->bGSHMC) {
               if (MASTER(cr))
               {
                  backup_state(state_global, g_beforMD[stepMD], NULL, NULL);
+                 g_beforMD[stepMD]->q = state->q; // Andersen barostat
+                 g_beforMD[stepMD]->v_q = state->v_q; // Andersen barostat
                  if (stepMD == curre)
+                 {
                     u_beforMD = enerd->term[F_EPOT];
+                    k_beforMD = enerd->term[F_EKIN];
+                    Etot_beforMD = u_beforMD + k_beforMD;
+                    if (ir->epc == epcANDERSEN)
+                       Etot_beforMD += 0.5*(ir->iMuMass)*(sqr(state->v_q)) + (state->q)*(ir->iAlphaPress);
+                 }
               }
            }
 
@@ -2352,8 +2366,16 @@ if (ir->bGSHMC) {
                  if (MASTER(cr))
                  {
                     backup_state(state_global, g_afterMD[i], NULL, NULL);
+                    g_afterMD[i]->q = state->q; // Andersen barostat
+                    g_afterMD[i]->v_q = state->v_q; // Andersen barostat
                     if (i == curre)
+                    {
                        u_afterMD = enerd->term[F_EPOT];
+                       k_afterMD = enerd->term[F_EKIN];
+                       Etot_afterMD = u_afterMD + k_afterMD;
+                       if (ir->epc == epcANDERSEN)
+                          Etot_afterMD += 0.5*(ir->iMuMass)*(sqr(state->v_q)) + (state->q)*(ir->iAlphaPress);
+                    }
                  }
               }
 
@@ -2362,9 +2384,8 @@ if (ir->bGSHMC) {
                  /* We perform a test, either metropolis or Pande */
                  if (MASTER(cr))
                  {
-                    real Etot = enerd->term[F_EKIN] + enerd->term[F_EPOT];
                     iMetro = metropolis(fplog, top_global, ir, g_beforMD, g_afterMD, 0.0, 
-                                       u_beforMD, u_afterMD, rng, MDMC, Etot, iTrial, &weight, step, &bFlip);
+                                       u_beforMD, u_afterMD, rng, MDMC, Etot_beforMD, Etot_afterMD, iTrial, &weight, step, &bFlip);
                  }
                  if (PAR(cr))
                     gmx_bcast(sizeof(int), &iMetro, cr);
@@ -2547,10 +2568,9 @@ reload: // goto point for momentum update retrials
                        fprintf(fplog, "PMMC step is: forward +3 \n"); 
                        printf("PMMC step is: forward +3 \n"); 
                     }
-                    real Etot = enerd->term[F_EKIN] + enerd->term[F_EPOT];
                     /* We make sure not to perform Pande test */
                     iMetro = metropolis(fplog, top_global, ir, g_afterMD, g_beforMD, dDeltaXi, 
-                                        u_beforMD, u_beforMD, rng, PMMC, Etot, iTrial, &weight, step, &bFlip); 
+                                        u_beforMD, u_beforMD, rng, PMMC, Etot_beforMD, Etot_beforMD, iTrial, &weight, step, &bFlip); 
                  }
                  if (PAR(cr))
                     gmx_bcast(sizeof(int), &iMetro, cr);

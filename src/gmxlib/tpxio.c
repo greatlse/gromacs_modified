@@ -64,7 +64,7 @@
 #include "mtop_util.h"
 
 /* This number should be increased whenever the file format changes! */
-static const int tpx_version = 75;
+static const int tpx_version = 76;
 
 /* This number should only be increased when you edit the TOPOLOGY section
  * of the tpx format. This way we can maintain forward compatibility too
@@ -931,6 +931,13 @@ static void do_inputrec(t_fileio *fio, t_inputrec *ir,gmx_bool bRead,
     /* Pande test */
     if (file_version >= 75)
        gmx_fio_do_gmx_bool(fio, ir->bPandeTest);
+
+    /* Andersen barostat */
+    if (file_version >= 76)
+    {
+       gmx_fio_do_int(fio, ir->iMuMass);
+       gmx_fio_do_int(fio, ir->iAlphaPress);
+    }
 }
 
 

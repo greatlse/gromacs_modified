@@ -81,10 +81,19 @@ void set_state_entries(t_state *state,const t_inputrec *ir,int nnodes)
   state->flags |= (1<<estX);
   if (state->x == NULL)
     snew(state->x,state->nalloc);
-  if (EI_DYNAMICS(ir->eI)) {
+  if (state->x_res == NULL)
+    snew(state->x_res,state->nalloc);
+  if (state->q != state->vol0)
+    state->q = state->vol0;
+  if (EI_DYNAMICS(ir->eI))
+  {
     state->flags |= (1<<estV);
     if (state->v == NULL)
       snew(state->v,state->nalloc);
+    if (state->v_res == NULL)
+      snew(state->v_res,state->nalloc);
+    if (state->v_q != 0)
+      state->v_q = 0;
   }
   if (ir->eI == eiSD2) {
     state->flags |= (1<<estSDX);
@@ -122,7 +131,8 @@ void set_state_entries(t_state *state,const t_inputrec *ir,int nnodes)
     if (PRESERVE_SHAPE(*ir)) {
       state->flags |= (1<<estBOX_REL);
     }
-    if ((ir->epc == epcPARRINELLORAHMAN) || (ir->epc == epcMTTK)) {
+    if ((ir->epc == epcPARRINELLORAHMAN) || (ir->epc == epcMTTK) || (ir->epc == epcANDERSEN))
+    {
       state->flags |= (1<<estBOXV);
     }
     if (ir->epc != epcNO) {

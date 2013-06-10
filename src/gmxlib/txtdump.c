@@ -697,6 +697,13 @@ void pr_inputrec(FILE *fp,int indent,const char *title,t_inputrec *ir,
     PI("iHamOrd",ir->iHamOrd);
     PR("dTempi",ir->dTempi);
     PS("bMomFlip",BOOL(ir->bMomFlip));
+
+    /* Pande test */
+    PS("bPandeTest",BOOL(ir->bPandeTest));
+
+    /* Andersen barostat */
+    PI("iMuMass",ir->iMuMass);
+    PI("iAlphaPress",ir->iAlphaPress);
   }
 }
 #undef PS

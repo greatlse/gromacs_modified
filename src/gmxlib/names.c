@@ -100,7 +100,7 @@ const char *etcoupl_names[etcNR+1] = {
 }; /* yes is alias for berendsen */
 
 const char *epcoupl_names[epcNR+1] = {
-  "No", "Berendsen", "Parrinello-Rahman", "Isotropic", "MTTK", NULL
+  "No", "Berendsen", "Parrinello-Rahman", "Isotropic", "MTTK", "Andersen", NULL
 }; /* isotropic is alias for berendsen */
 
 const char *epcoupltype_names[epctNR+1] = {

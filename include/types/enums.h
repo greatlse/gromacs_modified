@@ -48,7 +48,7 @@ enum {
 }; /* yes is an alias for berendsen */
 
 enum {
-  epcNO, epcBERENDSEN, epcPARRINELLORAHMAN, epcISOTROPIC, epcMTTK, epcNR
+  epcNO, epcBERENDSEN, epcPARRINELLORAHMAN, epcISOTROPIC, epcMTTK, epcANDERSEN, epcNR // MARIO
 }; /* isotropic is an alias for berendsen */
 
 /* trotter decomposition extended variable parts */

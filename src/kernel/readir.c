@@ -417,7 +417,7 @@ void check_ir(const char *mdparin,t_inputrec *ir, t_gromppopts *opts,
         sprintf(err_buf,"tau_p must be > 0 instead of %g\n",ir->tau_p);
         CHECK(ir->tau_p <= 0);
         
-        if (ir->tau_p/dt_pcoupl < pcouple_min_integration_steps(ir->epc))
+        if (ir->tau_p/dt_pcoupl < pcouple_min_integration_steps(ir->epc) && ir->epc != epcANDERSEN)
         {
             sprintf(warn_buf,"For proper integration of the %s barostat, tau_p (%g) should be at least %d times larger than nstpcouple*dt (%g)",
                     EPCOUPLTYPE(ir->epc),ir->tau_p,pcouple_min_integration_steps(ir->epc),dt_pcoupl);
@@ -445,7 +445,7 @@ void check_ir(const char *mdparin,t_inputrec *ir, t_gromppopts *opts,
     {
         if (ir->epc > epcNO)
         {
-            if (ir->epc!=epcMTTK)
+            if ((ir->epc!=epcMTTK) && (ir->epc!=epcANDERSEN))
             {
                 warning_error(wi,"NPT only defined for vv using Martyna-Tuckerman-Tobias-Klein equations");	      
             }
@@ -1187,7 +1187,13 @@ void get_ir(const char *mdparin,const char *mdparout,
 #undef CTYPE
 
   /* Pande test */
-  EETYPE ("pande_test",   ir->bPandeTest,  yesno_names);
+  CCTYPE ("Pande test");
+  EETYPE("pande_test",            ir->bPandeTest, yesno_names);
+
+  /* Andersen barostat */
+  CCTYPE ("Andersen barostat");
+  ITYPE ("mu_mass",               ir->iMuMass,    1);
+  ITYPE ("alpha_press",           ir->iAlphaPress,1);
 
   write_inpfile(mdparout,ninp,inp,FALSE,wi);
   for (i=0; (i<ninp); i++) {
@@ -1905,7 +1911,7 @@ void do_index(const char* mdparin, const char *ndx,
       nstcmin = tcouple_min_integration_steps(ir->etc);
       if (nstcmin > 1)
       {
-          if (tau_min/(ir->delta_t*ir->nsttcouple) < nstcmin)
+          if (tau_min/(ir->delta_t*ir->nsttcouple) < nstcmin && ir->epc != epcANDERSEN)
           {
               sprintf(warn_buf,"For proper integration of the %s thermostat, tau_t (%g) should be at least %d times larger than nsttcouple*dt (%g)",
                       ETCOUPLTYPE(ir->etc),

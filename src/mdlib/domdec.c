@@ -1430,7 +1430,7 @@ void dd_collect_vec(gmx_domdec_t *dd,
     gmx_domdec_master_t *ma;
     int  n,i,c,a,nalloc=0;
     rvec *buf=NULL;
-    
+
     dd_collect_cg(dd,state_local);
 
     if (dd->nnodes <= GMX_DD_NNODES_SENDRECV)
@@ -1456,6 +1456,8 @@ void dd_collect_state(gmx_domdec_t *dd,
         state->lambda = state_local->lambda;
         state->veta = state_local->veta;
         state->vol0 = state_local->vol0;
+        state->q = state_local->q; /* Andersen barostat */
+        state->v_q = state_local->v_q; /* Andersen barostat */
         copy_mat(state_local->box,state->box);
         copy_mat(state_local->boxv,state->boxv);
         copy_mat(state_local->svir_prev,state->svir_prev);
@@ -1486,9 +1488,11 @@ void dd_collect_state(gmx_domdec_t *dd,
             switch (est) {
             case estX:
                 dd_collect_vec(dd,state_local,state_local->x,state->x);
+                dd_collect_vec(dd,state_local,state_local->x_res,state->x_res); /*Andersen barostat */
                 break;
             case estV:
                 dd_collect_vec(dd,state_local,state_local->v,state->v);
+                dd_collect_vec(dd,state_local,state_local->v_res,state->v_res); /*Andersen barostat */
                 break;
             case estSDX:
                 dd_collect_vec(dd,state_local,state_local->sd_X,state->sd_X);
@@ -1568,9 +1572,11 @@ static void dd_realloc_state(t_state *state,rvec **f,int nalloc)
             switch(est) {
             case estX:
                 srenew(state->x,state->nalloc);
+                srenew(state->x_res,state->nalloc); /* Andersen barostat */
                 break;
             case estV:
                 srenew(state->v,state->nalloc);
+                srenew(state->v_res,state->nalloc); /* Andersen barostat */
                 break;
             case estSDX:
                 srenew(state->sd_X,state->nalloc);
@@ -1761,9 +1767,11 @@ static void dd_distribute_state(gmx_domdec_t *dd,t_block *cgs,
             switch (i) {
             case estX:
                 dd_distribute_vec(dd,cgs,state->x,state_local->x);
+                dd_distribute_vec(dd,cgs,state->x_res,state_local->x_res); /* Andersen barostat */
                 break;
             case estV:
                 dd_distribute_vec(dd,cgs,state->v,state_local->v);
+                dd_distribute_vec(dd,cgs,state->v_res,state_local->v_res); /* Andersen barostat */
                 break;
             case estSDX:
                 dd_distribute_vec(dd,cgs,state->sd_X,state_local->sd_X);

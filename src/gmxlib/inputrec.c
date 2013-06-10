@@ -159,6 +159,9 @@ int pcouple_min_integration_steps(int epc)
     case epcMTTK:
         n = nstmin_harmonic;
         break;
+    case epcANDERSEN:
+        n = nstmin_harmonic;
+        break;
     default:
         gmx_incons("Unknown epc value");
         n = 0;
