@@ -229,7 +229,7 @@ static void do_update_vv_vel(int start,int nrend,double dt,
                              rvec accel[],ivec nFreeze[],int epc,real invmass[],
                              unsigned short ptype[],
                              unsigned short cFREEZE[],unsigned short cACC[],
-                             t_state *state,rvec f[],int iMuMass,int iAlphaPress,
+                             t_state *state,rvec f[],double dMuMass,double dAlphaPress,
                              gmx_bool bExtended,real alpha)
 {
     double imass,w_dt,muinv_dt;
@@ -294,9 +294,9 @@ static void do_update_vv_vel(int start,int nrend,double dt,
     /* Andersen Barostat */
     if (epc == epcANDERSEN)
     {
-        muinv_dt = dt/iMuMass;
+        muinv_dt = dt/dMuMass;
         norm = sqr(state->x[start][0]) + sqr(state->x[start][1]) + sqr(state->x[start][2]); /* We don't consider the square root because in the next line this quantity appears squared */
-        state->v_q += 0.5*muinv_dt*(f[start][0]*norm/(3*V0*state->x[start][0]) - iAlphaPress);
+        state->v_q += 0.5*muinv_dt*(f[start][0]*norm/(3*V0*state->x[start][0]) - dAlphaPress);
     }
 } /* do_update_vv_vel */
 
@@ -306,7 +306,7 @@ static void do_update_vv_pos(int start,int nrend,double dt,
                              unsigned short ptype[],
                              unsigned short cFREEZE[],
                              t_state *state,rvec xprime[],rvec f[],
-                             int iMuMass,gmx_bool bExtended,real alpha)
+                             double dMuMass,gmx_bool bExtended,real alpha)
 {
   double imass,w_dt;
   int gf=0;
@@ -1740,7 +1740,7 @@ void update_coords(FILE *fplog,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
                              md->invmass,md->ptype,
                              md->cFREEZE,md->cACC,
-                             state,force,inputrec->iMuMass,inputrec->iAlphaPress,
+                             state,force,inputrec->dMuMass,inputrec->dAlphaPress,
                              bExtended,alpha);
             break;
         case etrtPOSITION:
@@ -1748,7 +1748,7 @@ void update_coords(FILE *fplog,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
                              md->invmass,md->ptype,md->cFREEZE,
-                             state,xprime,force,inputrec->iMuMass,
+                             state,xprime,force,inputrec->dMuMass,
                              bExtended,alpha);
             break;
         }

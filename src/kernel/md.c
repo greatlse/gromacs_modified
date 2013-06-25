@@ -2319,7 +2319,7 @@ if ( (GSHMC_part == MDMC && stepMD%ir->iL <= forw3) || GSHMC_part == PMMC )
 
 
         /* ###########  GSHMC: Generalized Shadow Hybrid Monte Carlo  ######### */
-if (ir->bGSHMC) {
+if (ir->bGSHMC && step_rel != 0) {
                  /* *** PART 1: Molecular Dynamics Monte Carlo *** */
         /* when we are completing the MD part of GSHMC, save the positions 
            at t-3, t-2, t-1, t, t+1, t+2, t+3 for interpolation polynomial */
@@ -2337,15 +2337,16 @@ if (ir->bGSHMC) {
               if (MASTER(cr))
               {
                  backup_state(state_global, g_beforMD[stepMD], NULL, NULL);
-                 g_beforMD[stepMD]->q = state->q; // Andersen barostat
-                 g_beforMD[stepMD]->v_q = state->v_q; // Andersen barostat
+                 /* Andersen barostat */
+                 g_beforMD[stepMD]->q = state->q; // MARIO
+                 g_beforMD[stepMD]->v_q = state->v_q; // MARIO
                  if (stepMD == curre)
                  {
                     u_beforMD = enerd->term[F_EPOT];
                     k_beforMD = enerd->term[F_EKIN];
                     Etot_beforMD = u_beforMD + k_beforMD;
                     if (ir->epc == epcANDERSEN)
-                       Etot_beforMD += 0.5*(ir->iMuMass)*(sqr(state->v_q)) + (state->q)*(ir->iAlphaPress);
+                       Etot_beforMD += 0.5*(ir->dMuMass)*(sqr(state->v_q)) + (state->q)*(ir->dAlphaPress);
                  }
               }
            }
@@ -2366,15 +2367,16 @@ if (ir->bGSHMC) {
                  if (MASTER(cr))
                  {
                     backup_state(state_global, g_afterMD[i], NULL, NULL);
-                    g_afterMD[i]->q = state->q; // Andersen barostat
-                    g_afterMD[i]->v_q = state->v_q; // Andersen barostat
+                    /* Andersen barostat */
+                    g_afterMD[i]->q = state->q; // MARIO
+                    g_afterMD[i]->v_q = state->v_q; // MARIO
                     if (i == curre)
                     {
                        u_afterMD = enerd->term[F_EPOT];
                        k_afterMD = enerd->term[F_EKIN];
                        Etot_afterMD = u_afterMD + k_afterMD;
                        if (ir->epc == epcANDERSEN)
-                          Etot_afterMD += 0.5*(ir->iMuMass)*(sqr(state->v_q)) + (state->q)*(ir->iAlphaPress);
+                          Etot_afterMD += 0.5*(ir->dMuMass)*(sqr(state->v_q)) + (state->q)*(ir->dAlphaPress);
                     }
                  }
               }
@@ -2507,7 +2509,11 @@ reload: // goto point for momentum update retrials
                     dd_collect_vec(cr->dd, state, state->v, state_global->v);
 
                  if (MASTER(cr))
+                 {
                     backup_state(state_global, g_beforMD[curre], NULL, NULL);
+                    g_beforMD[curre]->q = state->q; // MARIO
+                    g_beforMD[curre]->v_q = state->v_q; // MARIO
+                 }
 
                  /* integrate three steps backwards and three forward to fill in 
                     the positions buffer for calculating interpolation polynomial */
@@ -2519,46 +2525,74 @@ reload: // goto point for momentum update retrials
               case back1:
                  backup_state(state, s_beforMD[back1], &f, &f_beforMD[back1]); 
                  if (MASTER(cr))
+                 {
                     backup_state(state_global, g_beforMD[back1], NULL, NULL);
+                    g_beforMD[back1]->q = state->q; // MARIO
+                    g_beforMD[back1]->v_q = state->v_q; // MARIO
+                 }
                  stepPM = back2;
                  break;
 
               case back2:
                  backup_state(state, s_beforMD[back2], &f, &f_beforMD[back2]); 
                  if (MASTER(cr))
+                 {
                     backup_state(state_global, g_beforMD[back2], NULL, NULL);
+                    g_beforMD[back2]->q = state->q; // MARIO
+                    g_beforMD[back2]->v_q = state->v_q; // MARIO
+                 }
                  stepPM = back3;
                  break;
 
               case back3:
                  backup_state(state, s_beforMD[back3], &f, &f_beforMD[back3]); 
                  if (MASTER(cr))
+                 {
                     backup_state(state_global, g_beforMD[back3], NULL, NULL);
+                    g_beforMD[back3]->q = state->q; // MARIO
+                    g_beforMD[back3]->v_q = state->v_q; // MARIO
+                 }
                  stepPM = forw1;
                  /* recover the state at the current timestep with the updated momentum */
                  backup_state(s_beforMD[curre], state, &f_beforMD[curre], &f);
                  if (MASTER(cr))
+                 {
                     backup_state(g_beforMD[curre], state_global, NULL, NULL);
+                    state_global->q = g_beforMD[curre]->q; // MARIO
+                    state_global->v_q = g_beforMD[curre]->v_q; // MARIO
+                 }
                  break;
    
               case forw1:
                  backup_state(state, s_beforMD[forw1], &f, &f_beforMD[forw1]); 
                  if (MASTER(cr))
+                 {
                     backup_state(state_global, g_beforMD[forw1], NULL, NULL);
+                    g_beforMD[forw1]->q = state->q; // MARIO
+                    g_beforMD[forw1]->v_q = state->v_q; // MARIO
+                 }
                  stepPM = forw2;
                  break;
 
               case forw2:
                  backup_state(state, s_beforMD[forw2], &f, &f_beforMD[forw2]); 
                  if (MASTER(cr))
+                 {
                     backup_state(state_global, g_beforMD[forw2], NULL, NULL);
+                    g_beforMD[forw2]->q = state->q; // MARIO
+                    g_beforMD[forw2]->v_q = state->v_q; // MARIO
+                 }
                  stepPM = forw3;
                  break;
 
               case forw3:
                  backup_state(state, s_beforMD[forw3], &f, &f_beforMD[forw3]);
                  if (MASTER(cr))
+                 {
                     backup_state(state_global, g_beforMD[forw3], NULL, NULL);
+                    g_beforMD[forw3]->q = state->q; // MARIO
+                    g_beforMD[forw3]->v_q = state->v_q; // MARIO
+                 }
 
                  /* Perform metropolis test for the updated momentum */
                  if (MASTER(cr))

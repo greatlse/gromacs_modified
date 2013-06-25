@@ -1721,6 +1721,8 @@ static void dd_distribute_state(gmx_domdec_t *dd,t_block *cgs,
         state_local->lambda = state->lambda;
         state_local->veta   = state->veta;
         state_local->vol0   = state->vol0;
+        state_local->q      = state->q; /* Andersen barostat */
+        state_local->v_q    = state->v_q; /* Andersen barostat */
         copy_mat(state->box,state_local->box);
         copy_mat(state->box_rel,state_local->box_rel);
         copy_mat(state->boxv,state_local->boxv);
@@ -1745,6 +1747,8 @@ static void dd_distribute_state(gmx_domdec_t *dd,t_block *cgs,
     dd_bcast(dd,sizeof(real),&state_local->lambda);
     dd_bcast(dd,sizeof(real),&state_local->veta);
     dd_bcast(dd,sizeof(real),&state_local->vol0);
+    dd_bcast(dd,sizeof(real),&state_local->q); /* Andersen barostat */
+    dd_bcast(dd,sizeof(real),&state_local->v_q); /* Andersen barostat */
     dd_bcast(dd,sizeof(state_local->box),state_local->box);
     dd_bcast(dd,sizeof(state_local->box_rel),state_local->box_rel);
     dd_bcast(dd,sizeof(state_local->boxv),state_local->boxv);

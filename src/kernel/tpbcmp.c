@@ -643,8 +643,8 @@ static void cmp_inputrec(FILE *fp,t_inputrec *ir1,t_inputrec *ir2,real ftol, rea
   cmp_int(fp,"inputrec->iHamOrd",-1,ir1->iHamOrd,ir2->iHamOrd);
   cmp_real(fp,"inputrec->dTempi",-1,ir1->dTempi,ir2->dTempi,ftol,abstol);
   /* Andersen barostat */
-  cmp_int(fp,"inputrec->iMuMass",-1,ir1->iMuMass,ir2->iMuMass);
-  cmp_int(fp,"inputrec->iAlphaPress",-1,ir1->iAlphaPress,ir2->iAlphaPress);
+  cmp_double(fp,"inputrec->dMuMass",-1,ir1->dMuMass,ir2->dMuMass,ftol,abstol);
+  cmp_double(fp,"inputrec->dAlphaPress",-1,ir1->dAlphaPress,ir2->dAlphaPress,ftol,abstol);
 }
 
 static void comp_pull_AB(FILE *fp,t_pull *pull,real ftol,real abstol)

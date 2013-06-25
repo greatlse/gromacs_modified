@@ -1192,8 +1192,8 @@ void get_ir(const char *mdparin,const char *mdparout,
 
   /* Andersen barostat */
   CCTYPE ("Andersen barostat");
-  ITYPE ("mu_mass",               ir->iMuMass,    1);
-  ITYPE ("alpha_press",           ir->iAlphaPress,1);
+  RTYPE ("mu_mass",               ir->dMuMass,    1);
+  RTYPE ("alpha_press",           ir->dAlphaPress,1);
 
   write_inpfile(mdparout,ninp,inp,FALSE,wi);
   for (i=0; (i<ninp); i++) {

@@ -344,7 +344,7 @@ double shadow_andersen(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real
   real dShadow = 0.0;
   real dt2 = ir->delta_t * ir->delta_t; // integration timestep. we apply it here instead of in D and Q
   int  k, l, n;
-  int mu = ir->iMuMass; // the mass of the piston
+  double mu = ir->dMuMass; // the mass of the piston
 
   gmx_mtop_atomloop_all_t aloop;
   t_atom *atom;
@@ -573,11 +573,16 @@ void momentum_update(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms
      }
      else
      {
-        /* New terms derived from Andersen barostat */
-        u = sqrt(boltz) * (gmx_rng_gaussian_real(rng))/sqrt(ir->iMuMass);
-        vq_prime =  cos(phi)*(state->v_q) + sin(phi)*u;
-        u_prime  = -sin(phi)*(state->v_q) + cos(phi)*u;
-        state->v_q = vq_prime;
+        if (MASTER(cr))
+        {
+           /* New terms derived from Andersen barostat */
+           u = sqrt(boltz) * (gmx_rng_gaussian_real(rng))/sqrt(ir->dMuMass);
+           vq_prime =  cos(phi)*(state->v_q) + sin(phi)*u;
+           u_prime  = -sin(phi)*(state->v_q) + cos(phi)*u;
+           state->v_q = vq_prime;
+        }
+        if (PAR(cr))
+           gmx_bcast(sizeof(double), &state->v_q, cr);
      }
   }
 
@@ -587,9 +592,9 @@ void momentum_update(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms
      gmx_sumd(1, dDeltaXi, cr);
 
   if (ir->epc == epcANDERSEN)
-     *dDeltaXi = 0.5*(sqr(u_prime) - sqr(u)) * (ir->iMuMass);
-
-  copy_rvecn(vel_prime, state->v, 0, state->natoms);
+     *dDeltaXi = 0.5*(sqr(u_prime) - sqr(u)) * (ir->dMuMass);
+  else
+     copy_rvecn(vel_prime, state->v, 0, state->natoms);
 
   sfree(vel);
   sfree(vel_prime);

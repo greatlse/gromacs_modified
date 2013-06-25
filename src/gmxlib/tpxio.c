@@ -935,8 +935,8 @@ static void do_inputrec(t_fileio *fio, t_inputrec *ir,gmx_bool bRead,
     /* Andersen barostat */
     if (file_version >= 76)
     {
-       gmx_fio_do_int(fio, ir->iMuMass);
-       gmx_fio_do_int(fio, ir->iAlphaPress);
+       gmx_fio_do_double(fio, ir->dMuMass);
+       gmx_fio_do_double(fio, ir->dAlphaPress);
     }
 }
 

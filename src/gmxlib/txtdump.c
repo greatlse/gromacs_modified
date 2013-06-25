@@ -702,8 +702,8 @@ void pr_inputrec(FILE *fp,int indent,const char *title,t_inputrec *ir,
     PS("bPandeTest",BOOL(ir->bPandeTest));
 
     /* Andersen barostat */
-    PI("iMuMass",ir->iMuMass);
-    PI("iAlphaPress",ir->iAlphaPress);
+    PI("dMuMass",ir->dMuMass);
+    PI("dAlphaPress",ir->dAlphaPress);
   }
 }
 #undef PS
