@@ -106,7 +106,10 @@ void update_coords(FILE         *fplog,
 			  t_commrec    *cr,  /* these shouldn't be here -- need to think about it */
 			  t_nrnb       *nrnb,
 			  gmx_constr_t constr,
-			  t_idef       *idef);
+			  t_idef       *idef,
+                          gmx_enerdata_t *enerd,
+                          tensor total_vir,
+                          t_trxframe *fr);
 
 /* Return TRUE if OK, FALSE in case of Shake Error */
 

@@ -230,7 +230,7 @@ static void do_update_vv_vel(int start,int nrend,double dt,
                              unsigned short ptype[],
                              unsigned short cFREEZE[],unsigned short cACC[],
                              t_state *state,rvec f[],double dMuMass,double dAlphaPress,
-                             gmx_bool bExtended,real alpha)
+                             gmx_bool bExtended,real alpha,gmx_enerdata_t *enerd)
 {
     double imass,w_dt,muinv_dt;
     int gf=0,ga=0,gt=0;
@@ -238,8 +238,8 @@ static void do_update_vv_vel(int start,int nrend,double dt,
     real u,vn,vv,va,vb,vnrel;
     int n,d,i;
     double g,mv1,mv2;
-    real V0,V;
-    int norm;
+    /* Andersen Barostat */
+    real V0;
     
     if (bExtended)
     {
@@ -290,15 +290,35 @@ static void do_update_vv_vel(int start,int nrend,double dt,
             }
         }
     }
-
-    /* Andersen Barostat */
-    if (epc == epcANDERSEN)
-    {
-        muinv_dt = dt/dMuMass;
-        norm = sqr(state->x[start][0]) + sqr(state->x[start][1]) + sqr(state->x[start][2]); /* We don't consider the square root because in the next line this quantity appears squared */
-        state->v_q += 0.5*muinv_dt*(f[start][0]*norm/(3*V0*state->x[start][0]) - dAlphaPress);
-    }
 } /* do_update_vv_vel */
+
+static void do_update_vv_vel_andersen(int start,int nrend,double dt,
+                                      real invmass[],
+                                      t_state *state,rvec f[],
+                                      double dMuMass,double dAlphaPress)
+{
+    double muinv_dt;
+    int n,d;
+    double pres,pres1,pres2;
+    real V0;
+
+    V0 = cuberoot(state->q);
+
+    for(n=start; n<nrend; n++)
+    {
+        for(d=0; d<DIM; d++)
+        {
+            pres1 += f[n][d]*state->x_res[n][d];
+            pres1 /= DIM*state->q;
+            pres2 += sqr(state->v_res[n][d])*invmass[n];
+            pres2 *= sqr(dMuMass)/(DIM*state->q*sqr(V0));
+        }
+    }
+    pres = pres1 + pres2;
+
+    muinv_dt = dt/dMuMass;
+    state->v_q += 0.5*muinv_dt*(pres - dAlphaPress);
+} /* do_update_vv_vel_andersen */
 
 static void do_update_vv_pos(int start,int nrend,double dt,
                              t_grp_tcstat *tcstat,t_grp_acc *gstat,
@@ -312,7 +332,8 @@ static void do_update_vv_pos(int start,int nrend,double dt,
   int gf=0;
   int n,d;
   double g,mr1,mr2;
-  real V0;
+  /* Andersen Barostat */
+  real V0,V;
 
   if (bExtended)
   {
@@ -329,8 +350,9 @@ static void do_update_vv_pos(int start,int nrend,double dt,
   /* Andersen Barostat */
   if (epc == epcANDERSEN)
   {
-      state->q += dt*(state->v_q);
       V0 = cuberoot(state->q);
+      state->q += dt*(state->v_q);
+      V = cuberoot(state->q); // MARIO
   }
 
   for(n=start; n<nrend; n++)
@@ -350,7 +372,7 @@ static void do_update_vv_pos(int start,int nrend,double dt,
               {
                   /* Andersen Barostat */
                   state->x_res[n][d] = state->x[n][d]/V0+dt*state->v_res[n][d];
-                  xprime[n][d] = state->x_res[n][d]*V0;
+                  xprime[n][d] = state->x_res[n][d]*V;
               }
           }
           else
@@ -385,6 +407,7 @@ static void do_update_visc(int start,int nrend,double dt,
 */
         for(n=start; n<nrend; n++) {
             imass = invmass[n];
+            if (cTC)
             if (cTC)
             {
                 gt = cTC[n];
@@ -1509,6 +1532,7 @@ void update_box(FILE *fplog,
     real dt_1;
     int start,homenr,nrend,i,n,m,g;
     tensor vir_con;
+    double r; // MARIO
     
     start = md->start;
     homenr = md->homenr;
@@ -1576,6 +1600,18 @@ B_new*(vol_new)^(1/3), dB/dT_new = (veta_new)*B(new). */
             break;
         }
         break;
+    case (epcANDERSEN): // MARIO
+        switch (inputrec->epct)
+        {
+        case (epctISOTROPIC):
+            r = state->q/det(state->box);
+            r = cuberoot(r);
+            msmul(state->box,r,state->box);
+            break;
+        default:
+            break;
+        }
+        break;
     default:
         break;
     }
@@ -1615,7 +1651,10 @@ void update_coords(FILE *fplog,
                    t_commrec *cr, /* these shouldn't be here -- need to think about it */
                    t_nrnb *nrnb,
                    gmx_constr_t constr,
-                   t_idef *idef)
+                   t_idef *idef,
+                   gmx_enerdata_t *enerd, // QUIZAS SOBRA
+                   tensor total_vir,
+                   t_trxframe *fr)
 {
     gmx_bool bExtended,bNH,bPR,bTrotter,bLastStep,bLog=FALSE,bEner=FALSE;
     double dt,alpha;
@@ -1734,14 +1773,61 @@ void update_coords(FILE *fplog,
         alpha = 1.0 + DIM/((double)inputrec->opts.nrdf[0]); /* assuming barostat coupled to group 0. */
         switch (UpdatePart) {
         case etrtVELOCITY1:
+            if (inputrec->epc != epcANDERSEN)
+                do_update_vv_vel(start,nrend,dt,
+                                 ekind->tcstat,ekind->grpstat,
+                                 inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+                                 md->invmass,md->ptype,
+                                 md->cFREEZE,md->cACC,
+                                 state,force,inputrec->dMuMass,inputrec->dAlphaPress,
+                                 bExtended,alpha,enerd);
+            else
+            {
+                tensor pres;
+                real pressure = calc_pres(fr->ePBC,inputrec->nwall,state->box,ekind->ekin,total_vir,pres,0.0);
+                double muinv_dt = dt/inputrec->dMuMass;
+                state->v_q += 0.5*muinv_dt*(pressure - inputrec->dAlphaPress);
+                /*do_update_vv_vel_andersen(start,nrend,dt,
+                                          md->invmass,
+                                          state,force,
+                                          inputrec->dMuMass,inputrec->dAlphaPress);*/
+                do_update_vv_vel(start,nrend,dt,
+                                 ekind->tcstat,ekind->grpstat,
+                                 inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+                                 md->invmass,md->ptype,
+                                 md->cFREEZE,md->cACC,
+                                 state,force,inputrec->dMuMass,inputrec->dAlphaPress,
+                                 bExtended,alpha,enerd); // MARIO HAY QUE QUITAR ENERD, YA NO HACE FALTA. A LO MEJOR TAMBIEN HAY QUE QUITARLO DE UPDATE_COORDS()
+            }
+            break;
         case etrtVELOCITY2:
-            do_update_vv_vel(start,nrend,dt,
-                             ekind->tcstat,ekind->grpstat,
-                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
-                             md->invmass,md->ptype,
-                             md->cFREEZE,md->cACC,
-                             state,force,inputrec->dMuMass,inputrec->dAlphaPress,
-                             bExtended,alpha);
+            if (inputrec->epc != epcANDERSEN)
+                do_update_vv_vel(start,nrend,dt,
+                                 ekind->tcstat,ekind->grpstat,
+                                 inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+                                 md->invmass,md->ptype,
+                                 md->cFREEZE,md->cACC,
+                                 state,force,inputrec->dMuMass,inputrec->dAlphaPress,
+                                 bExtended,alpha,enerd);
+            else
+            {
+                do_update_vv_vel(start,nrend,dt,
+                                 ekind->tcstat,ekind->grpstat,
+                                 inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+                                 md->invmass,md->ptype,
+                                 md->cFREEZE,md->cACC,
+                                 state,force,inputrec->dMuMass,inputrec->dAlphaPress,
+                                 bExtended,alpha,enerd);
+                tensor pres;
+                calc_ke_part(state,&(inputrec->opts),md,ekind,nrnb,FALSE,FALSE);
+                real pressure = calc_pres(fr->ePBC,inputrec->nwall,state->box,ekind->ekin,total_vir,pres,0.0);
+                double muinv_dt = dt/inputrec->dMuMass;
+                state->v_q += 0.5*muinv_dt*(pressure - inputrec->dAlphaPress);
+                /*do_update_vv_vel_andersen(start,nrend,dt,
+                                          md->invmass,
+                                          state,force,
+                                          inputrec->dMuMass,inputrec->dAlphaPress);*/
+            }
             break;
         case etrtPOSITION:
             do_update_vv_pos(start,nrend,dt,

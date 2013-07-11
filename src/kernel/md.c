@@ -566,8 +566,8 @@ static void compute_globals(FILE *fplog, gmx_global_stat_t gstat, t_commrec *cr,
         *pcurr = enerd->term[F_PRES];
         /* calculate temperature using virial */
         enerd->term[F_VTEMP] = calc_temp(trace(total_vir),ir->opts.nrdf[0]);
-        
-    }    
+
+    }
 }
 
 
@@ -1602,7 +1602,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     temp0 = enerd->term[F_TEMP];
     
     /* if using an iterative algorithm, we need to create a working directory for the state. */
-    if (bIterations) 
+    if (bIterations)
     {
             bufstate = init_bufstate(state);
     }
@@ -1618,6 +1618,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     /* need to make an initiation call to get the Trotter variables set, as well as other constants for non-trotter
        temperature control */
     trotter_seq = init_npt_vars(ir,state,&MassQ,bTrotter);
+    /* Andersen barostat*/
     if (ir->epc == epcANDERSEN)
         state->q = state->vol0;
     
@@ -2161,7 +2162,7 @@ if ( (GSHMC_part == MDMC && stepMD%ir->iL <= forw3) || GSHMC_part == PMMC )
             update_coords(fplog,step,ir,mdatoms,state,
                           f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
                           ekind,M,wcycle,upd,bInitStep,etrtVELOCITY1,
-                          cr,nrnb,constr,&top->idef);
+                          cr,nrnb,constr,&top->idef,enerd,total_vir,fr);
 
             if (bIterations)
             {
@@ -2197,9 +2198,9 @@ if ( (GSHMC_part == MDMC && stepMD%ir->iL <= forw3) || GSHMC_part == PMMC )
                         trotter_update(ir,step,ekind,enerd,state,total_vir,mdatoms,&MassQ,trotter_seq,ettTSEQ0);
                         vetanew = state->veta;
                         state->veta = veta_save;
-                    } 
-                } 
-                
+                    }
+                }
+
                 bOK = TRUE;
                 if ( !bRerunMD || rerun_fr.bV || bForceUpdate) {  /* Why is rerun_fr.bV here?  Unclear. */
                     dvdl = 0;
@@ -2253,14 +2254,14 @@ if ( (GSHMC_part == MDMC && stepMD%ir->iL <= forw3) || GSHMC_part == PMMC )
                    time step kinetic energy for the pressure (always true now, since we want accurate statistics).
                    b) If we are using EkinAveEkin for the kinetic energy for the temperture control, we still feed in 
                    EkinAveVel because it's needed for the pressure */
-                
+
                 /* temperature scaling and pressure scaling to produce the extended variables at t+dt */
-                if (!bInitStep) 
+                if (!bInitStep)
                 {
                     if (bTrotter)
                     {
                         trotter_update(ir,step,ekind,enerd,state,total_vir,mdatoms,&MassQ,trotter_seq,ettTSEQ2);
-                    } 
+                    }
                     else 
                     {
                         update_tcouple(fplog,step,ir,state,ekind,wcycle,upd,&MassQ,mdatoms);
@@ -2446,6 +2447,10 @@ if (ir->bGSHMC && step_rel != 0) {
                        backup_state(g_afterMD[curre], state_global, NULL, NULL);
                        /* the pot. energy at the center of the interpolation will not change in PMMC */
                        u_beforMD = u_afterMD;
+                       k_beforMD = k_afterMD;
+                       Etot_beforMD = u_beforMD + k_beforMD;
+                       if (ir->epc == epcANDERSEN)
+                          Etot_beforMD += 0.5*(ir->dMuMass)*(sqr(state->v_q)) + (state->q)*(ir->dAlphaPress);
                     }
                     /* only write output after an accepted MDMC */
                     bOutput=TRUE;
@@ -3001,7 +3006,7 @@ if (MASTER(cr) && debug)
                     update_coords(fplog,step,ir,mdatoms,state,f,
                                   fr->bTwinRange && bNStList,fr->f_twin,fcd,
                                   ekind,M,wcycle,upd,FALSE,etrtVELOCITY2,
-                                  cr,nrnb,constr,&top->idef);
+                                  cr,nrnb,constr,&top->idef,enerd,total_vir,fr);
                 }
 
                 /* Above, initialize just copies ekinh into ekin,
@@ -3015,7 +3020,7 @@ if (MASTER(cr) && debug)
                 }
                 
                 update_coords(fplog,step,ir,mdatoms,state,f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
-                              ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef);
+                              ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir,fr);
                 wallcycle_stop(wcycle,ewcUPDATE);
 
                 update_constraints(fplog,step,&dvdl,ir,ekind,mdatoms,state,graph,f,
@@ -3039,7 +3044,7 @@ if (MASTER(cr) && debug)
                     copy_rvecn(cbuf,state->x,0,state->natoms);
 
                     update_coords(fplog,step,ir,mdatoms,state,f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
-                                  ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef);
+                                  ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir,fr);
                     wallcycle_stop(wcycle,ewcUPDATE);
 
                     /* do we need an extra constraint here? just need to copy out of state->v to upd->xp? */
@@ -3199,19 +3204,19 @@ if (MASTER(cr) && debug)
         {
             enerd->term[F_ECONSERVED] = enerd->term[F_ETOT] + saved_conserved_quantity;
         }
-        else 
+        else
         {
             enerd->term[F_ECONSERVED] = enerd->term[F_ETOT] + compute_conserved_from_auxiliary(ir,state,&MassQ);
         }
         /* Check for excessively large energies */
-        if (bIonize) 
+        if (bIonize)
         {
 #ifdef GMX_DOUBLE
             real etot_max = 1e200;
 #else
             real etot_max = 1e30;
 #endif
-            if (fabs(enerd->term[F_ETOT]) > etot_max) 
+            if (fabs(enerd->term[F_ETOT]) > etot_max)
             {
                 fprintf(stderr,"Energy too large (%g), giving up\n",
                         enerd->term[F_ETOT]);
