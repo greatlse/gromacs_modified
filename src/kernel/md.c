@@ -1620,7 +1620,18 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     trotter_seq = init_npt_vars(ir,state,&MassQ,bTrotter);
     /* Andersen barostat*/
     if (ir->epc == epcANDERSEN)
+    {
         state->q = state->vol0;
+        int n,d;
+        for(n=mdatoms->start; n<mdatoms->homenr; n++)
+        {
+            for(d=0; d<DIM; d++)
+            {
+                state->x_res[n][d] = state->x[n][d]/cuberoot(state->q);
+                state->v_res[n][d] = state->v[n][d]/cuberoot(state->q);
+            }
+        }
+    }
     
     if (MASTER(cr))
     {
@@ -2162,7 +2173,7 @@ if ( (GSHMC_part == MDMC && stepMD%ir->iL <= forw3) || GSHMC_part == PMMC )
             update_coords(fplog,step,ir,mdatoms,state,
                           f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
                           ekind,M,wcycle,upd,bInitStep,etrtVELOCITY1,
-                          cr,nrnb,constr,&top->idef,enerd,total_vir,fr);
+                          cr,nrnb,constr,&top->idef,enerd,total_vir);
 
             if (bIterations)
             {
@@ -3006,7 +3017,7 @@ if (MASTER(cr) && debug)
                     update_coords(fplog,step,ir,mdatoms,state,f,
                                   fr->bTwinRange && bNStList,fr->f_twin,fcd,
                                   ekind,M,wcycle,upd,FALSE,etrtVELOCITY2,
-                                  cr,nrnb,constr,&top->idef,enerd,total_vir,fr);
+                                  cr,nrnb,constr,&top->idef,enerd,total_vir);
                 }
 
                 /* Above, initialize just copies ekinh into ekin,
@@ -3020,7 +3031,7 @@ if (MASTER(cr) && debug)
                 }
                 
                 update_coords(fplog,step,ir,mdatoms,state,f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
-                              ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir,fr);
+                              ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir);
                 wallcycle_stop(wcycle,ewcUPDATE);
 
                 update_constraints(fplog,step,&dvdl,ir,ekind,mdatoms,state,graph,f,
@@ -3044,7 +3055,7 @@ if (MASTER(cr) && debug)
                     copy_rvecn(cbuf,state->x,0,state->natoms);
 
                     update_coords(fplog,step,ir,mdatoms,state,f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
-                                  ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir,fr);
+                                  ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir);
                     wallcycle_stop(wcycle,ewcUPDATE);
 
                     /* do we need an extra constraint here? just need to copy out of state->v to upd->xp? */

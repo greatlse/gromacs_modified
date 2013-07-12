@@ -108,8 +108,7 @@ void update_coords(FILE         *fplog,
 			  gmx_constr_t constr,
 			  t_idef       *idef,
                           gmx_enerdata_t *enerd,
-                          tensor total_vir,
-                          t_trxframe *fr);
+                          tensor total_vir);
 
 /* Return TRUE if OK, FALSE in case of Shake Error */
 
