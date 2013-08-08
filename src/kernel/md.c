@@ -2411,7 +2411,11 @@ if (ir->bGSHMC && step_rel != 0) {
                     if ((ir->bPandeTest && bFlip == TRUE) || (!(ir->bPandeTest) && ir->bMomFlip))
                     {
                        for (i=back3; i<=forw3; i++)
+                       {
                           momentum_flip(s_beforMD[i]->natoms, s_beforMD[i]->v);
+                          momentum_flip(s_beforMD[i]->natoms, s_beforMD[i]->v_res); /* Andersen barostat */
+                          s_beforMD[i]->v_q *= -1; /* Andersen barostat */
+                       }
    
                        for (i=back3, j=forw3; i<=forw3; i++, j--)
                        {
@@ -2536,6 +2540,8 @@ reload: // goto point for momentum update retrials
                  stepPM = back1;
                  /* reverse velocity to integrate backwards in time */
                  momentum_flip(state->natoms, state->v);
+                 momentum_flip(state->natoms, state->v_res); /* Andersen barostat */
+                 state->v_q *= -1; /* Andersen barostat */
                  break;
                  
               case back1:

@@ -63,7 +63,8 @@ void calc_vir(FILE *log,int nxf,rvec x[],rvec f[],tensor vir,
   int      i,isx;
   double   dvxx=0,dvxy=0,dvxz=0,dvyx=0,dvyy=0,dvyz=0,dvzx=0,dvzy=0,dvzz=0;
     
-  for(i=0; (i<nxf); i++) {
+  for(i=0; (i<nxf); i++)
+  {
     dvxx+=x[i][XX]*f[i][XX];
     dvxy+=x[i][XX]*f[i][YY];
     dvxz+=x[i][XX]*f[i][ZZ];

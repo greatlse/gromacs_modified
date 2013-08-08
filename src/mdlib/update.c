@@ -281,7 +281,8 @@ static void do_update_vv_vel(int start,int nrend,double dt,
                 {
                     /* Andersen Barostat */
                     state->v_res[n][d] = state->v_res[n][d] + 0.5*(w_dt*f[n][d])/V0;
-                    //state->v[n][d] = state->v[n][d] + 0.5*(w_dt*f[n][d]);
+                    //state->v[n][d]     = state->v[n][d] + 0.5*(w_dt*f[n][d]);
+                    state->v[n][d]     = state->v_res[n][d]*V0;
                 }
             }
             else
@@ -306,6 +307,7 @@ static void do_update_vv_pos(int start,int nrend,double dt,
   double g,mr1,mr2;
   /* Andersen Barostat */
   real V0;
+  real L1, L2, L3;
 
   if (bExtended)
   {
@@ -322,8 +324,9 @@ static void do_update_vv_pos(int start,int nrend,double dt,
   /* Andersen Barostat */
   if (epc == epcANDERSEN)
   {
-      state->q += 0.5*dt*(state->v_q);
-      V0 = cuberoot(state->q);
+     L1 = cuberoot(state->q);
+     state->q += 0.5*dt*(state->v_q);
+     L2 = cuberoot(state->q);
   }
 
   for(n=start; n<nrend; n++)
@@ -342,8 +345,9 @@ static void do_update_vv_pos(int start,int nrend,double dt,
               else
               {
                   /* Andersen Barostat */
-                  state->x_res[n][d] = state->x_res[n][d]+dt*state->v_res[n][d];
-                  xprime[n][d] = state->x_res[n][d]*V0;
+                  state->x_res[n][d] = state->x_res[n][d] + dt*state->v_res[n][d];
+                  xprime[n][d]       = state->x[n][d] + dt*(sqr(L1)/sqr(L2))*state->v[n][d];
+                  //xprime[n][d]       = state->x_res[n][d]*L1;
               }
           }
           else
@@ -352,6 +356,24 @@ static void do_update_vv_pos(int start,int nrend,double dt,
           }
       }
   }
+
+  /* Andersen Barostat */
+  if (epc == epcANDERSEN)
+  {
+     state->q += 0.5*dt*(state->v_q);
+     L3 = cuberoot(state->q);
+
+     for(n=start; n<nrend; n++)
+     {
+        for(d=0; d<DIM; d++)
+        {
+           state->v[n][d] = state->v[n][d] * (L1/L3);
+           xprime[n][d]   = xprime[n][d] * (L3/L1);
+        }
+     }
+  }
+
+
 }/* do_update_vv_pos */
 
 static void do_update_visc(int start,int nrend,double dt,
@@ -1636,7 +1658,6 @@ void update_coords(FILE *fplog,
     int *icom = NULL;
     tensor vir_con;
     rvec *vcom,*xcom,*vall,*xall,*xin,*vin,*forcein,*fall,*xpall,*xprimein,*xprime;
-    int p,q,r,s; // MARIO
     real pressure; // MARIO
 
     /* Running the velocity half does nothing except for velocity verlet */
@@ -1755,13 +1776,14 @@ void update_coords(FILE *fplog,
             else
             {
                 /* Pressure */
-                //tensor pres;
-                //calc_ke_part(state,&(inputrec->opts),md,ekind,nrnb,FALSE,FALSE);
-                //real pressure = calc_pres(inputrec->ePBC,inputrec->nwall,state->box,ekind->ekin,total_vir,pres,0.0);
-                pressure = enerd->term[F_PRES];
+                tensor pres;
+                calc_ke_part(state,&(inputrec->opts),md,ekind,nrnb,FALSE,FALSE);
+                pressure = calc_pres(inputrec->ePBC,inputrec->nwall,state->box,ekind->ekin,total_vir,pres,0.0);
+//                pressure = enerd->term[F_PRES];
                 /* Velocity for the volume */
                 double muinv_dt = dt/inputrec->dMuMass;
                 state->v_q += 0.5*muinv_dt*(pressure - inputrec->dAlphaPress);
+
                 /* Velocities */
                 do_update_vv_vel(start,nrend,dt,
                                  ekind->tcstat,ekind->grpstat,
@@ -1770,12 +1792,6 @@ void update_coords(FILE *fplog,
                                  md->cFREEZE,md->cACC,
                                  state,force,inputrec->dMuMass,inputrec->dAlphaPress,
                                  bExtended,alpha,enerd); // MARIO HAY QUE QUITAR ENERD, YA NO HACE FALTA. A LO MEJOR TAMBIEN HAY QUE QUITARLO DE UPDATE_COORDS()
-                printf("pressure = %f, volumen = %f y velocidad = %f\n",pressure,state->q,state->v_q); // MARIO
-                for(p=start; p<nrend; p++)
-                {
-                    for(q=0; q<DIM; q++)
-                        state->v[p][q] = state->v_res[p][q]*cuberoot(state->q);
-                }
             }
             break;
         case etrtVELOCITY2:
@@ -1798,31 +1814,25 @@ void update_coords(FILE *fplog,
                                  state,force,inputrec->dMuMass,inputrec->dAlphaPress,
                                  bExtended,alpha,enerd);
                 /* Pressure */
-                //tensor pres;
-                //calc_ke_part(state,&(inputrec->opts),md,ekind,nrnb,FALSE,FALSE);
-                //real pressure = calc_pres(inputrec->ePBC,inputrec->nwall,state->box,ekind->ekin,total_vir,pres,0.0);
-                pressure = enerd->term[F_PRES];
+                tensor pres;
+                calc_ke_part(state,&(inputrec->opts),md,ekind,nrnb,FALSE,FALSE);
+                pressure = calc_pres(inputrec->ePBC,inputrec->nwall,state->box,ekind->ekin,total_vir,pres,0.0);
+//                pressure = enerd->term[F_PRES];
                 /* Velocity for the volume */
                 double muinv_dt = dt/inputrec->dMuMass;
                 state->v_q += 0.5*muinv_dt*(pressure - inputrec->dAlphaPress);
-                /* Volume */
-                state->q += 0.5*dt*(state->v_q);
-                for(r=start; r<nrend; r++)
-                {
-                    for(s=0; s<DIM; s++)
-                        state->v[r][s] = state->v_res[r][s]*cuberoot(state->q);
-                }
-                printf("pressure = %f, volumen = %f y velocidad = %f\n",pressure,state->q,state->v_q); // MARIO
             }
             break;
         case etrtPOSITION:
+
             do_update_vv_pos(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
                              md->invmass,md->ptype,md->cFREEZE,
                              state,xprime,force,inputrec->dMuMass,
                              bExtended,alpha);
-            printf("pressure = %f, volumen = %f y velocidad = %f\n",pressure,state->q,state->v_q); // MARIO
+
+//            printf("pressure = %f, volumen = %f y velocidad = %f\n",pressure,state->q,state->v_q); // MARIO
             break;
         }
         break;

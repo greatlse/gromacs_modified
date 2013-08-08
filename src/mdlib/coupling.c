@@ -239,7 +239,8 @@ real calc_pres(int ePBC,int nwall,matrix box,tensor ekin,tensor vir,
     
     if (ePBC==epbcNONE || (ePBC==epbcXY && nwall!=2))
         clear_mat(pres);
-    else {
+    else
+    {
         /* Uitzoeken welke ekin hier van toepassing is, zie Evans & Morris - E.
 * Wrs. moet de druktensor gecorrigeerd worden voor de netto stroom in
 * het systeem...
@@ -261,7 +262,8 @@ real calc_pres(int ePBC,int nwall,matrix box,tensor ekin,tensor vir,
             for(m=0; (m<DIM); m++)
                 pres[n][m]=(ekin[n][m]-vir[n][m]+Plr)*fac;
         
-        if (debug) {
+        if (debug)
+        {
             pr_rvecs(debug,0,"PC: pres",pres,DIM);
             pr_rvecs(debug,0,"PC: ekin",ekin,DIM);
             pr_rvecs(debug,0,"PC: vir ",vir, DIM);
