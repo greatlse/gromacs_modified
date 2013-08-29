@@ -74,18 +74,12 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7
   }
   else
   {
-        dShadowHamCand = shadow_andersen(mtop, ir, candidate, Etotcandidate);  // PRUEBA
-        dShadowHamCurr = shadow_andersen(mtop, ir, current,   Etotcurrent);    // PRUEBA
-//     if (iTest == MDMC)
-//     {
-//        dShadowHamCand = shadow_andersen(mtop, ir, candidate, Etotcandidate);
+//        dShadowHamCand = shadow_andersen2(mtop, ir, candidate, Ucandidate);  // PRUEBA
+//        dShadowHamCurr = shadow_andersen2(mtop, ir, current,   Ucurrent);    // PRUEBA
+        dShadowHamCand = shadow_andersen(mtop, ir, candidate, Ucandidate);  // PRUEBA
+        dShadowHamCurr = shadow_andersen(mtop, ir, current,   Ucurrent);    // PRUEBA
+//        dShadowHamCand = shadow_andersen(mtop, ir, candidate, Etotcandidate); 
 //        dShadowHamCurr = shadow_andersen(mtop, ir, current, Etotcurrent);
-//     }
-//     else
-//     {
-//        dShadowHamCand = shadow(mtop, ir, candidate, Ucandidate);
-//        dShadowHamCurr = shadow(mtop, ir, current, Ucurrent);
-//     }
   }
 
   real dDelta_H = dShadowHamCand - dShadowHamCurr;
@@ -160,7 +154,8 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7
      }
      else
      {
-        dProbabilityA = cuberoot(current[curre]->q) * exp(dExponent) / cuberoot(candidate[curre]->q);
+        dProbabilityA = exp(dExponent);
+//        dProbabilityA = exp(dExponent) * current[curre]->q / candidate[curre]->q; // PRUEBA
         real dAlpha = gmx_rng_uniform_real(rng); 
         if (dAlpha < dProbabilityA)
            iResult = ACCEPTED;
@@ -170,7 +165,8 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7
   }
 
 /* PRUEBA */
-//iResult = ACCEPTED;
+//if (iTest==MDMC)
+// iResult = ACCEPTED;
 /* PRUEBA */
 
   static int MDMCcount = 0;
@@ -213,7 +209,7 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7
      if (iResult == ACCEPTED)
         PMMCaccepted++;
      sprintf(sMessage, 
-          "PMMC step \(trial %d\) %s, with probability %f. Total accepted = %d. Acceptance rate = %f. \n",
+          "PMMC step (trial %d) %s, with probability %f. Total accepted = %d. Acceptance rate = %f. \n",
           iTrial,
           (iResult==ACCEPTED? "ACCEPTED": "REJECTED"), 
           dProbabilityA,
@@ -221,8 +217,8 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7
           (iTest==MDMC? MDMCaccepted / (float) MDMCcount : PMMCaccepted / (float) PMMCcount)
          ); 
   } 
-  printf("step = %li \n", step);
-  fprintf(fplog, "step = %li \n", step);
+  printf("step = %d \n", step);
+  fprintf(fplog, "step = %d \n", step);
 
   printf("%s", sMessage);
   fprintf(fplog, "%s", sMessage);
@@ -230,7 +226,7 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7
   fprintf(fplog, "dShadowHamCand = %f, dShadowHamCurr = %f \n", dShadowHamCand, dShadowHamCurr);
   printf("dShadowHamCand = %f, dShadowHamCurr = %f \n", dShadowHamCand, dShadowHamCurr);
 //  printf("Ucurrent = %f, Ucandidate = %f \nTotal Energy Current = %f, Total Energy Candidate = %f \n", Ucurrent, Ucandidate, Etotcurrent, Etotcandidate); // MARIO
-  printf("Total Energy Cand = %f, Total Energy Curr = %f \n", Etotcandidate, Etotcurrent ); // MARIO
+  printf("TotalEnergCand = %f, TotalEnergCurr = %f \n", Etotcandidate, Etotcurrent ); // MARIO
 //  printf("v_q current = %f, v_q candidate = %f \nq current = %f, q candidate = %f \n",current[curre]->v_q,candidate[curre]->v_q,current[curre]->q,candidate[curre]->q); // MARIO
 
   printf("dExponent = %f, dDelta_H = %f, dDeltaXi = %f \n", dExponent, dDelta_H, dDeltaXi);
@@ -346,7 +342,7 @@ void centered_differences(t_state *s[7], rvec *Q[6][4], int natoms)
 double shadow_andersen(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real Upot)
 {
   rvec *D[6][4];   // Interpolation polynomials for calculating shadow hamiltonians
-  real *Q[6][4];
+  real Q[6][4];
 
   real termQ0 = 0.0, termQ1 = 0.0, termQ2 = 0.0, termQ11 = 0.0, termQ112 = 0.0, termQ13 = 0.0, termQ22 = 0.0;
   real termD11 = 0.0, termD112 = 0.0, termD12 = 0.0, termD13 = 0.0, termD22 = 0.0;
@@ -361,13 +357,9 @@ double shadow_andersen(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real
 
   /* Calculate interpolation polynomials Q and D */
   for (k = 0; k < 6; k++)
-  {
      for (l = 0; l < 4; l++)
-     {
-        snew(Q[k][l], mtop->natoms);
         snew(D[k][l], mtop->natoms);
-     }
-  }     
+
   centered_differences_andersen(state, Q, D, mtop->natoms);
 
   /* Calculate 4th order shadow hamiltonian */
@@ -383,30 +375,112 @@ double shadow_andersen(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real
      while (gmx_mtop_atomloop_all_next(aloop, &n, &atom))
      {
         termD11 += iprod(D[1][1][n], D[1][1][n]) * atom->m;
-        termD112 += iprod(D[1][2][n], D[1][2][n]) * atom->m * cuberoot(sqr(*Q[0][1])); // MARIO
+        termD112 += iprod(D[1][2][n], D[1][2][n]) * atom->m * cuberoot(sqr(Q[0][1])); // MARIO
         termD12 += iprod(D[1][1][n], D[2][1][n]) * atom->m;
-        termD13 += iprod(D[1][1][n], D[3][1][n]) * atom->m * cuberoot(sqr(*Q[0][1]));
-        termD22 += iprod(D[2][1][n], D[2][1][n]) * atom->m * cuberoot(sqr(*Q[0][1]));
+        termD13 += iprod(D[1][1][n], D[3][1][n]) * atom->m * cuberoot(sqr(Q[0][1]));
+        termD22 += iprod(D[2][1][n], D[2][1][n]) * atom->m * cuberoot(sqr(Q[0][1]));
      }
-     termQ0 = *Q[0][1]; // MARIO
-     termQ1 = *Q[1][1] / cuberoot(*Q[0][1]);
-     termQ2 = *Q[2][1] / cuberoot(*Q[0][1]);
-     termQ11 = (*Q[1][1] * *Q[1][1]) / (cuberoot(sqr(sqr(*Q[0][1]))));
-     termQ112 = (*Q[1][2] * *Q[1][2]) * mu; // MARIO
-     termQ13 = (*Q[1][1] * *Q[3][1]) * mu;
-     termQ22 = (*Q[2][1] * *Q[2][1]) * mu;
+     termQ0 = Q[0][1]; // MARIO
+     termQ1 = Q[1][1] / cuberoot(Q[0][1]);
+     termQ2 = Q[2][1] / cuberoot(Q[0][1]);
+     termQ11 = Q[1][1] * Q[1][1] / cuberoot(sqr(sqr(Q[0][1])));
+     termQ112 = Q[1][2] * Q[1][2] * mu; // MARIO
+     termQ13 = Q[1][1] * Q[3][1] * mu;
+     termQ22 = Q[2][1] * Q[2][1] * mu;
      /* Shadow Hamiltonian */
-//     dShadow = ((2.0*(termQ13 + termD13) - (termQ22 + termD22)) + 4.0*(2.0*(termQ2 - termQ11/3.0) * termD11 - termQ1 * termD12)/3.0) / (24.0*dt2) + Upot + ir->dAlphaPress*termQ0 + 0.5*(termD112 + termQ112)/dt2;
-     dShadow = ((2.0*(termQ13 + termD13) - (termQ22 + termD22)) + 4.0*(2.0*(termQ2 - termQ11/3.0) * termD11 - termQ1 * termD12)/3.0) / (24.0*dt2) + Upot;
+     dShadow = ((2.0*(termQ13 + termD13) - (termQ22 + termD22)) + 4.0*(2.0*(termQ2 - termQ11/3.0) * termD11 - termQ1 * termD12)/3.0) / (24.0*dt2) + Upot + ir->dAlphaPress*termQ0 + 0.5*(termD112 + termQ112)/dt2;
+//     dShadow = ((2.0*(termQ13 + termD13) - (termQ22 + termD22)) + 4.0*(2.0*(termQ2 - termQ11/3.0) * termD11 - termQ1 * termD12)/3.0) / (24.0*dt2) + Upot;
+
+
+
+
+printf("shadow = %f \n", dShadow);
+printf("correction = %f \n", (4.0*(2.0*(termQ2 - termQ11/3.0) * termD11 - termQ1 * termD12)/3.0) / (24.0*dt2));
   }
 
   for (k = 0; k < 6; k++)
-  {
      for (l = 0; l < 4; l++)
-     {
-        sfree(Q[k][l]);
         sfree(D[k][l]);
+
+  return dShadow;
+}
+
+double shadow_andersen2(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real Upot)
+{
+  rvec *D[6][4];   // Interpolation polynomials for calculating shadow hamiltonians
+  real Q[6][4];
+  real termQ0 = 0.0, termQ1 = 0.0, termQ2 = 0.0, termQ11 = 0.0, termQ112 = 0.0, termQ13 = 0.0, termQ22 = 0.0;
+  real termD11 = 0.0, termD112 = 0.0, termD12 = 0.0, termD13 = 0.0, termD22 = 0.0;
+  real termD15 = 0.0, termD24 = 0.0, termD33 = 0.0;
+  real termQ15 = 0.0, termQ24 = 0.0, termQ33 = 0.0;
+  real dShadow = 0.0;
+  real dt2 = ir->delta_t * ir->delta_t; // integration timestep. we apply it here instead of in D and Q
+  int  k, l, n;
+  double mu = ir->dMuMass; // the mass of the piston
+
+  /* Calculate interpolation polynomials Q and D */
+  for (k = 0; k < 6; k++)
+     for (l = 0; l < 4; l++)
+        snew(D[k][l], mtop->natoms);
+  centered_differences_andersen(state, Q, D, mtop->natoms);
+  centered_differences(state, D, mtop->natoms);
+
+  gmx_mtop_atomloop_all_t aloop;
+  t_atom *atom;
+  /* Calculate 4th order shadow hamiltonian */
+  if (ir->iHamOrd == 4)
+  {
+     aloop = gmx_mtop_atomloop_all_init(mtop);
+     while (gmx_mtop_atomloop_all_next(aloop, &n, &atom))
+     {
+        termD11 += iprod(D[1][1][n], D[1][1][n]) * atom->m;
+        termD112 += iprod(D[1][2][n], D[1][2][n]) * atom->m; // MARIO
+        termD12 += iprod(D[1][1][n], D[2][1][n]) * atom->m;
+        termD13 += iprod(D[1][1][n], D[3][1][n]) * atom->m;
+        termD22 += iprod(D[2][1][n], D[2][1][n]) * atom->m;
      }
+     termQ0 = Q[0][1]; // MARIO
+     termQ1 = Q[1][1] / Q[0][1];
+     termQ2 = Q[2][1] / Q[0][1];
+     termQ11 = Q[1][1] * Q[1][1] / sqr(Q[0][1]);
+     termQ112 = Q[1][2] * Q[1][2] * mu; // MARIO
+     termQ13 = Q[1][1] * Q[3][1] * mu;
+     termQ22 = Q[2][1] * Q[2][1] * mu;
+
+     /* Shadow Hamiltonian */
+     dShadow = 0.5*(termD112 + termQ112)/dt2 + (2.0*(termQ13 + termD13) - (termQ22 + termD22)) / (24.0*dt2) + Upot + ir->dAlphaPress*termQ0; // no correction
+//     dShadow += (4.0*(2.0*(termQ2 - termQ11/3.0) * termD11 - termQ1 * termD12)/3.0) / (24.0*dt2); // add correction
+//     dShadow = 0.5*(termD112)/dt2 + (2.0*(termD13) - (termD22)) / (24.0*dt2) + Upot; // original 
+//printf("shadow = %f \n", dShadow);
+//printf("correction = %f \n", (4.0*(2.0*(termQ2 - termQ11/3.0) * termD11 - termQ1 * termD12)/3.0) / (24.0*dt2));
+  }
+
+  /* Calculate 6th order shadow hamiltonian */
+  if (ir->iHamOrd == 6)
+  {
+     aloop = gmx_mtop_atomloop_all_init(mtop);
+     while (gmx_mtop_atomloop_all_next(aloop, &n, &atom))
+     {
+        termD11 += iprod(D[1][3][n], D[1][3][n]) * atom->m;
+        termD112 += iprod(D[1][2][n], D[1][2][n]) * atom->m; // MARIO
+        termD22 += iprod(D[2][2][n], D[2][2][n]) * atom->m;
+        termD13 += iprod(D[1][2][n], D[3][2][n]) * atom->m;
+        termD15 += iprod(D[1][1][n], D[5][1][n]) * atom->m;
+        termD24 += iprod(D[2][1][n], D[4][1][n]) * atom->m;
+        termD33 += iprod(D[3][1][n], D[3][1][n]) * atom->m;
+     }
+     dShadow = 0.5 * (termD11 + (termD13 - 0.5*termD22)/6.0 + (termD15 - termD24 + 0.5*termD33)/180.0) / dt2 + Upot; // original
+//printf("normal terms = %f \n", 0.5 * (termD11 + (termD13 - 0.5*termD22)/6.0 + (termD15 - termD24 + 0.5*termD33)/180.0) / dt2);
+     termQ0 = Q[0][1]; // MARIO
+     termQ112 = Q[1][2] * Q[1][2] * mu; // MARIO
+     termQ13 = Q[1][1] * Q[3][1] * mu;
+     termQ22 = Q[2][1] * Q[2][1] * mu;
+//printf("extended terms = %f \n", (2.0*termQ13 - termQ22) / (24.0*dt2) + ir->dAlphaPress*termQ0 + 0.5*termQ112/dt2);
+     termQ15 = Q[1][1] * Q[5][1] * mu;
+     termQ24 = Q[2][1] * Q[4][1] * mu;
+     termQ33 = Q[3][1] * Q[3][1] * mu;
+     dShadow = 0.5*(termD112+termQ112)/dt2 + (2.0*(termQ13 + termD13) - (termQ22 + termD22)) / (24.0*dt2) + 
+               (termD15 + termQ15 - termD24 - termQ24 + 0.5*termD33 + 0.5*termQ33)/(360.0*dt2) + Upot + ir->dAlphaPress*termQ0;
   }
 
   return dShadow;
@@ -414,7 +488,7 @@ double shadow_andersen(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real
 
 
 /* Function for calculating interpolation polynomials using centered differences when using GSHMC and Andersen barostat */
-void centered_differences_andersen(t_state *s[7], real *Q[6][4], rvec *D[6][4], int natoms)
+void centered_differences_andersen(t_state *s[7], real Q[6][4], rvec *D[6][4], int natoms)
 {
   int i,j;
   real subD_3 = 0.0;
@@ -450,12 +524,12 @@ void centered_differences_andersen(t_state *s[7], real *Q[6][4], rvec *D[6][4], 
 
         /* Centered differences of order k with order of accuracy 4 (l=2) */
         D[1][2][i][j] = (-subD_2 + 8.0*subD_1) / 12.0;
-        //D[2][2][i][j] = (-addD_2 + 16.0*addD_1 - 30.0*s[curre]->x[i][j]) / 12.0;
-        //D[3][2][i][j] = (-subD_3 + 8.0*subD_2 - 13.0*subD_1) / 8.0;
+        D[2][2][i][j] = (-addD_2 + 16.0*addD_1 - 30.0*s[curre]->x[i][j]) / 12.0;  // PRUEBA
+        D[3][2][i][j] = (-subD_3 + 8.0*subD_2 - 13.0*subD_1) / 8.0;  // PRUEBA
 
         /* Centered differences of order k with order of accuracy 6 (l=3) */
-        //D[1][3][i][j] = (45.0*subD_1 - 9.0*subD_2 + subD_3) / 60.0;
-        //D[2][3][i][j] = (2.0*addD_3 - 27.0*addD_2 + 270.0*addD_1 - 490.0*s[curre]->x[i][j]) / 180.0;
+        D[1][3][i][j] = (45.0*subD_1 - 9.0*subD_2 + subD_3) / 60.0;  // PRUEBA
+        D[2][3][i][j] = (2.0*addD_3 - 27.0*addD_2 + 270.0*addD_1 - 490.0*s[curre]->x[i][j]) / 180.0;  // PRUEBA
      }
   }
 
@@ -467,15 +541,15 @@ void centered_differences_andersen(t_state *s[7], real *Q[6][4], rvec *D[6][4], 
   addQ_3 = s[forw3]->q + s[back3]->q;
 
   /* Centered differences of order k with order of accuracy 2 (l=1) */
-  *Q[0][1] = s[curre]->q;
-  *Q[1][1] = subQ_1 / 2.0;
-  *Q[2][1] = addQ_1 - 2.0 * s[curre]->q;
-  *Q[3][1] = (subQ_2 - 2.0 * subQ_1) / 2.0;
-  *Q[4][1] = addQ_2 - 4.0*addQ_1 + 6.0 * s[curre]->q;
-  *Q[5][1] = (5.0*subQ_1 - 4.0*subQ_2 + subQ_3) / 2.0;
+  Q[0][1] = s[curre]->q;
+  Q[1][1] = subQ_1 / 2.0;
+  Q[2][1] = addQ_1 - 2.0 * s[curre]->q;
+  Q[3][1] = (subQ_2 - 2.0 * subQ_1) / 2.0;
+  Q[4][1] = addQ_2 - 4.0*addQ_1 + 6.0 * s[curre]->q;
+  Q[5][1] = (5.0*subQ_1 - 4.0*subQ_2 + subQ_3) / 2.0;
 
   /* Centered differences of order k with order of accuracy 4 (l=2) */
-  *Q[1][2] = (-subQ_2 + 8.0*subQ_1) / 12.0;
+  Q[1][2] = (-subQ_2 + 8.0*subQ_1) / 12.0;
   //Q[2][2] = (-addQ_2 + 16.0*addQ_1 - 30.0*s[curre]->q) / 12.0;
   //Q[3][2] = (-subQ_3 + 8.0*subQ_2 - 13.0*subQ_1) / 8.0;
 
@@ -504,7 +578,7 @@ void momentum_update(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms
   int start  = mdatoms->start;
   int homenr = mdatoms->homenr;
   int nrend = start + homenr;
-  real u, u_prime, vq_prime, boltz;
+  real u, u_prime, vq_prime, boltz; // Andersen barostat
 
   boltz=BOLTZ*ir->dTempi;
 
@@ -570,13 +644,13 @@ void momentum_update(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms
         vel_prime[n][d] =  cos(phi)*vel[n][d] + sin(phi)*xi[n][d];
         xi_prime[n][d]  = -sin(phi)*vel[n][d] + cos(phi)*xi[n][d];
         *dDeltaXi += (xi_prime[n][d] - xi[n][d])*(xi_prime[n][d] + xi[n][d]) * massT[n];
+//res_prime[n][d] = vel_prime[n][d] / L0; // PRUEBA
      }
   }
   copy_rvecn(vel_prime, state->v, 0, state->natoms);
 
   if (ir->epc == epcANDERSEN)
   {
-
 //     *dDeltaXi = 0.0; 
 //     for (n = start; n < nrend; n++)
 //     {
@@ -590,17 +664,15 @@ void momentum_update(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms
 //     }
 //     copy_rvecn(res_prime, state->v_res, 0, state->natoms);
 
-
      if (MASTER(cr))
      {
         /* New terms derived from Andersen barostat */
-        u = sqrt(boltz) * (gmx_rng_gaussian_real(rng))/sqrt(ir->dMuMass);
+        u = sqrt(boltz) * gmx_rng_gaussian_real(rng) / sqrt(ir->dMuMass);
         vq_prime =  cos(phi)*(state->v_q) + sin(phi)*u;
         u_prime  = -sin(phi)*(state->v_q) + cos(phi)*u;
         state->v_q = vq_prime;
         *dDeltaXi += (sqr(u_prime) - sqr(u)) * ir->dMuMass;
      }
-
      if (PAR(cr))
         gmx_bcast(sizeof(double), &state->v_q, cr);
   }
@@ -651,8 +723,6 @@ void momentum_generate(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdato
 void backup_state(t_state *state_a, t_state *state_b, rvec **f_a, rvec **f_b) 
 {
     int i, j, nc;
-
-// printf("\n ... entering backup_state ... \n");
 
 //typedef struct
 //{
@@ -790,8 +860,6 @@ void backup_state(t_state *state_a, t_state *state_b, rvec **f_a, rvec **f_b)
       srenew(*f_b, state_a->nalloc);
       copy_rvecn(*f_a, *f_b, 0, state_a->natoms);
    } 
-
-// printf("\n ... leaving backup_state ... \n");
 }
 
 static void sampling(real tempi, t_mdatoms *mdatoms, rvec xi[], gmx_rng_t rng)

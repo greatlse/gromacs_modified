@@ -17,9 +17,10 @@ void centered_differences(t_state *x[7], rvec *Q[6][4], int natoms);
 
 /* Function for calculating shadow hamiltonians in GSHMC and Andersen barostat */
 double shadow_andersen(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real Etot);
+double shadow_andersen2(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real Etot);
 
 /* Function for calculating interpolation polynomials using centered differences when using GSHMC and Andersen barostat */
-void centered_differences_andersen(t_state *s[7], real *Q[6][4], rvec *D[6][4], int natoms);
+void centered_differences_andersen(t_state *s[7], real Q[6][4], rvec *D[6][4], int natoms);
 
 void momentum_flip(int natoms, rvec v[]);
 
