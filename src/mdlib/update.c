@@ -280,10 +280,7 @@ static void do_update_vv_vel(int start,int nrend,double dt,
                 else
                 {
                     /* Andersen Barostat */
-//                    state->v_res[n][d] = state->v_res[n][d] + 0.5*(w_dt*f[n][d])/V0;
                     state->v[n][d]     = state->v[n][d] + 0.5*(w_dt*f[n][d]);
-//                    state->v[n][d]     = state->v_res[n][d]*V0;
-                    state->v_res[n][d] = state->v[n][d] / V0;  // these need to be coupled here for the momentum_update
                 }
             }
             else
@@ -346,17 +343,13 @@ static void do_update_vv_pos(int start,int nrend,double dt,
               else
               {
                   /* Andersen Barostat */
-//                  state->x_res[n][d] = state->x_res[n][d] + dt*state->v_res[n][d];
                   xprime[n][d]       = state->x[n][d] + dt*(sqr(L1)/sqr(L2))*state->v[n][d];
-//                  state->x_res[n][d] = state->x[n][d] / L1 + dt*state->v_res[n][d];
-                  state->x_res[n][d] = xprime[n][d] / L2;
               }
           }
           else
           {
               xprime[n][d] = state->x[n][d];
           }
-//printf("atom= %d, x = %f, x_res = %f \n", n, xprime[n][d], state->x_res[n][d]);
       }
   }
 
@@ -1599,10 +1592,10 @@ B_new*(vol_new)^(1/3), dB/dT_new = (veta_new)*B(new). */
     case (epcANDERSEN): // MARIO
         switch (inputrec->epct)
         {
-        case (epctISOTROPIC):
-//PRUEBA            r = state->q/det(state->box);
-//PRUEBA            r = cuberoot(r);
-//PRUEBA            msmul(state->box,r,state->box);
+        case (epctISOTROPIC): // PRUEBA
+            r = state->q/det(state->box);
+            r = cuberoot(r);
+            msmul(state->box,r,state->box);
             break;
         default:
             break;
@@ -1768,36 +1761,22 @@ void update_coords(FILE *fplog,
         alpha = 1.0 + DIM/((double)inputrec->opts.nrdf[0]); /* assuming barostat coupled to group 0. */
         switch (UpdatePart) {
         case etrtVELOCITY1:
-            if (inputrec->epc != epcANDERSEN)
-                do_update_vv_vel(start,nrend,dt,
-                                 ekind->tcstat,ekind->grpstat,
-                                 inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
-                                 md->invmass,md->ptype,
-                                 md->cFREEZE,md->cACC,
-                                 state,force,inputrec->dMuMass,inputrec->dAlphaPress,
-                                 bExtended,alpha,enerd);
-            else
+            if (inputrec->epc == epcANDERSEN)
             {
-                /* Pressure */
-//                calc_ke_part(state,&(inputrec->opts),md,ekind,nrnb,FALSE,FALSE);
-//                tensor pres;
-////                pressure = calc_pres(inputrec->ePBC,inputrec->nwall,state->box,ekind->ekin,total_vir,pres,0.0);
-//                pressure = calc_pres(inputrec->ePBC,inputrec->nwall,state->box,ekind->tcstat->ekinh,total_vir,pres,0.0);
-                pressure = enerd->term[F_PRES];
-
                 /* Velocity for the volume */
+                pressure = enerd->term[F_PRES];
                 double muinv_dt = dt/inputrec->dMuMass;
-                state->v_q += 0.5*muinv_dt*(pressure - inputrec->dAlphaPress);
-
-                /* Velocities */
-                do_update_vv_vel(start,nrend,dt,
-                                 ekind->tcstat,ekind->grpstat,
-                                 inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
-                                 md->invmass,md->ptype,
-                                 md->cFREEZE,md->cACC,
-                                 state,force,inputrec->dMuMass,inputrec->dAlphaPress,
-                                 bExtended,alpha,enerd); // MARIO HAY QUE QUITAR ENERD, YA NO HACE FALTA. A LO MEJOR TAMBIEN HAY QUE QUITARLO DE UPDATE_COORDS()
+                state->v_q += 0.5*muinv_dt*(pressure - inputrec->dAlphaPress) / PRESFAC; 
             }
+
+            /* Velocities */
+            do_update_vv_vel(start,nrend,dt,
+                             ekind->tcstat,ekind->grpstat,
+                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+                             md->invmass,md->ptype,
+                             md->cFREEZE,md->cACC,
+                             state,force,inputrec->dMuMass,inputrec->dAlphaPress,
+                             bExtended,alpha,enerd); // MARIO HAY QUE QUITAR ENERD, YA NO HACE FALTA. A LO MEJOR TAMBIEN HAY QUE QUITARLO DE UPDATE_COORDS()
             break;
         case etrtVELOCITY2:
             if (inputrec->epc != epcANDERSEN)
@@ -1818,19 +1797,18 @@ void update_coords(FILE *fplog,
                                  md->cFREEZE,md->cACC,
                                  state,force,inputrec->dMuMass,inputrec->dAlphaPress,
                                  bExtended,alpha,enerd);
+
+                /* Pressure */
             }
             break;
         case etrtPOSITION:
-                /* Pressure */
-//                calc_ke_part(state,&(inputrec->opts),md,ekind,nrnb,FALSE,FALSE);
-//                tensor pres;
-////                pressure = calc_pres(inputrec->ePBC,inputrec->nwall,state->box,ekind->ekin,total_vir,pres,0.0);
-//                pressure = calc_pres(inputrec->ePBC,inputrec->nwall,state->box,ekind->tcstat->ekinh,total_vir,pres,0.0);
-            pressure = enerd->term[F_PRES];
-
-            /* Velocity for the volume */
-            double muinv_dt = dt/inputrec->dMuMass;
-            state->v_q += 0.5*muinv_dt*(pressure - inputrec->dAlphaPress);
+            if (inputrec->epc == epcANDERSEN)
+            {
+                /* Velocity for the volume */
+                pressure = enerd->term[F_PRES];
+                double muinv_dt = dt/inputrec->dMuMass;
+                state->v_q += 0.5*muinv_dt*(pressure - inputrec->dAlphaPress) / PRESFAC;
+            }
             do_update_vv_pos(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,

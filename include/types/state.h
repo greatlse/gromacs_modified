@@ -175,8 +175,8 @@ typedef struct
   /* Andersen Barostat */
   real          q;    /* Volume                                         */
   real          v_q;  /* Velocity for the volume                        */
-  rvec          *v_res;   /* Velocities rescaled (natoms)               */
-  rvec          *x_res;   /* Positions rescaled (natoms)                */ 
+//  rvec          *v_res;   /* Velocities rescaled (natoms)               */
+//  rvec          *x_res;   /* Positions rescaled (natoms)                */ 
 } t_state;
 
 typedef struct 
