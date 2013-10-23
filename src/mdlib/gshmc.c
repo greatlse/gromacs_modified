@@ -413,6 +413,7 @@ double shadow_andersen2(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], rea
      for (l = 0; l < 4; l++)
         snew(D[k][l], mtop->natoms);
   centered_differences_andersen(state, Q, D, mtop->natoms);
+//  centered_differences(state, D, mtop->natoms);
 
   gmx_mtop_atomloop_all_t aloop;
   t_atom *atom;
