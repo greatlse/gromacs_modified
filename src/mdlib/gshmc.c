@@ -63,23 +63,44 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7
                real Ucurrent, real Ucandidate, gmx_rng_t rng, int iTest, real Etotcurrent, real Etotcandidate, int iTrial, double *weight, 
                gmx_large_int_t step, gmx_bool *bFlip)
 {
-  real dShadowHamCand = 0.0, dShadowHamCurr = 0.0;
+  real dHamCand = 0.0, dHamCurr = 0.0;
 
   if (ir->epc != epcANDERSEN)
   {
-     /* Calculate shadow hamiltonian for candidate position and momentum */
-     dShadowHamCand = shadow(mtop, ir, candidate, Ucandidate);
-
-     /* Calculate shadow hamiltonian for current position and momentum */
-     dShadowHamCurr = shadow(mtop, ir, current, Ucurrent);
+     if (ir->met == metGSHMC)
+     {
+        /* Calculate shadow hamiltonian for candidate position and momentum */
+        dHamCand = shadow(mtop, ir, candidate, Ucandidate);
+        /* Calculate shadow hamiltonian for current position and momentum */
+        dHamCurr = shadow(mtop, ir, current, Ucurrent);
+     }
+     else
+     {
+        /* Calculate hamiltonian for candidate position and momentum */
+        dHamCand = hamiltonian(mtop, ir, candidate, Ucandidate);
+        /* Calculate hamiltonian for current position and momentum */
+        dHamCurr = hamiltonian(mtop, ir, current, Ucurrent);
+     }
   }
   else
   {
-        dShadowHamCand = shadow_andersen2(mtop, ir, candidate, Ucandidate);
-        dShadowHamCurr = shadow_andersen2(mtop, ir, current,   Ucurrent); 
+     if (ir->met == metGSHMC)
+     {
+        /* Calculate shadow hamiltonian for candidate position and momentum */
+        dHamCand = shadow_andersen(mtop, ir, candidate, Ucandidate);
+        /* Calculate shadow hamiltonian for current position and momentum */
+        dHamCurr = shadow_andersen(mtop, ir, current,   Ucurrent); 
+     }
+     else
+     {
+        /* Calculate hamiltonian for candidate position and momentum */
+        dHamCand = hamiltonian_andersen(mtop, ir, candidate, Ucandidate);
+        /* Calculate hamiltonian for current position and momentum */
+        dHamCurr = hamiltonian_andersen(mtop, ir, current, Ucurrent);
+     }
   }
 
-  real dDelta_H = dShadowHamCand - dShadowHamCurr;
+  real dDelta_H = dHamCand - dHamCurr;
   real dBeta = 1.0 / (BOLTZ*ir->dTempi);
   real dProbabilityA = 0.0;
   real dProbabilityS = 0.0;
@@ -182,7 +203,7 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7
         MDMCaccepted++;
 
         /* Calculate reweight and output for autocorrelating */
-        *weight = exp( -dBeta * (Etotcurrent - dShadowHamCand));
+        *weight = exp( -dBeta * (Etotcurrent - dHamCand));
      }
      else if (ir->bPandeTest)
      {
@@ -220,11 +241,17 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7
   printf("%s", sMessage);
   fprintf(fplog, "%s", sMessage);
 
-  fprintf(fplog, "dShadowHamCand = %f, dShadowHamCurr = %f \n", dShadowHamCand, dShadowHamCurr);
-  printf("dShadowHamCand = %f, dShadowHamCurr = %f \n", dShadowHamCand, dShadowHamCurr);
-  printf("TotalEnergCand = %f, TotalEnergCurr = %f \n", Etotcandidate, Etotcurrent );
-//  printf("v_q current = %f, v_q candidate = %f \nq current = %f, q candidate = %f \n",current[curre]->v_q,candidate[curre]->v_q,current[curre]->q,candidate[curre]->q); // MARIO
-
+  if (ir->met == metGSHMC)
+  {
+     fprintf(fplog, "dShadowHamCand = %f, dShadowHamCurr = %f \n", dHamCand, dHamCurr);
+     printf("dShadowHamCand = %f, dShadowHamCurr = %f \n", dHamCand, dHamCurr);
+  }
+  else if (ir->met == metGHMC || ir->met == metHMC)
+  {
+     fprintf(fplog, "dHamCand = %f, dHamCurr = %f \n", dHamCand, dHamCurr);
+     printf("dHamCand = %f, dHamCurr = %f \n", dHamCand, dHamCurr);
+  }
+  
   printf("dExponent = %f, dDelta_H = %f, dDeltaXi = %f \n", dExponent, dDelta_H, dDeltaXi);
 
   if (ir->bPandeTest && iTest == MDMC && iResult == REJECTED)
@@ -236,6 +263,38 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7
   return iResult;
 }
 
+/* Function for calculating hamiltonians in GHMC */
+double hamiltonian(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real Upot)
+{
+  rvec *Q[6][4];   // Interpolation polynomials for calculating shadow hamiltonians
+  real term11 = 0.0;
+  real dHamiltonian = 0.0;
+  real dt2 = ir->delta_t * ir-> delta_t; // integration timestep. we apply it here instead of in Q
+  int  k, l, n;
+
+  gmx_mtop_atomloop_all_t aloop;
+  t_atom *atom;
+
+  /* Calculate interpolation polynomials Q */
+  for (k = 0; k < 6; k++)
+     for (l = 0; l < 4; l++)
+        snew(Q[k][l], mtop->natoms);
+  centered_differences(state, Q, mtop->natoms);
+
+  /* Calculate the Hamiltonian */
+  aloop = gmx_mtop_atomloop_all_init(mtop);
+  while (gmx_mtop_atomloop_all_next(aloop, &n, &atom))
+  {
+     term11 += iprod(Q[1][2][n], Q[1][2][n]) * atom->m;
+  }
+  dHamiltonian = 0.5 *  term11 / dt2 + Upot;
+  
+  for (k = 0; k < 6; k++)
+     for (l = 0; l < 4; l++)
+        sfree(Q[k][l]);
+
+  return dHamiltonian;
+}
 
 /* Function for calculating shadow hamiltonians in GSHMC */
 double shadow(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real Upot)
@@ -291,7 +350,6 @@ double shadow(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real Upot)
   return dShadow;
 }
 
-
 /* Function for calculating interpolation polynomials using centered differences */
 void centered_differences(t_state *s[7], rvec *Q[6][4], int natoms)
 {
@@ -334,19 +392,16 @@ void centered_differences(t_state *s[7], rvec *Q[6][4], int natoms)
   }
 }
 
-/* Function for calculating shadow hamiltonians in GSHMC and Andersen barostat */
-double shadow_andersen(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real Upot)
+/* Function for calculating hamiltonians in GHMC and Andersen barostat */
+double hamiltonian_andersen(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real Upot)
 {
   rvec *D[6][4];   // Interpolation polynomials for calculating shadow hamiltonians
   real Q[6][4];
-
-  real termQ0 = 0.0, termQ1 = 0.0, termQ2 = 0.0, termQ11 = 0.0, termQ112 = 0.0, termQ13 = 0.0, termQ22 = 0.0;
-  real termD11 = 0.0, termD112 = 0.0, termD12 = 0.0, termD13 = 0.0, termD22 = 0.0;
-
-  real dShadow = 0.0;
-  real dt2 = ir->delta_t * ir->delta_t; // integration timestep. we apply it here instead of in D and Q
+  real termQ0 = 0.0, termQ11 = 0.0;
+  real termD11 = 0.0;
+  real dHamiltonian = 0.0;
+  real dt2 = ir->delta_t * ir-> delta_t; // integration timestep. we apply it here instead of in D and Q
   int  k, l, n;
-  double mu = ir->dMuMass; // the mass of the piston
 
   gmx_mtop_atomloop_all_t aloop;
   t_atom *atom;
@@ -355,47 +410,26 @@ double shadow_andersen(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real
   for (k = 0; k < 6; k++)
      for (l = 0; l < 4; l++)
         snew(D[k][l], mtop->natoms);
-
   centered_differences_andersen(state, Q, D, mtop->natoms);
 
-  /* Calculate 4th order shadow hamiltonian */
-  if (ir->iHamOrd == 6)
+  /* Calculate the Hamiltonian */
+  aloop = gmx_mtop_atomloop_all_init(mtop);
+  while (gmx_mtop_atomloop_all_next(aloop, &n, &atom))
   {
-     ir->iHamOrd = 4;
-     printf("Order 6 for shadow Hamiltonian is still not implemented.\nWe calculate it for order 4.\n");
+     termD11 += iprod(D[1][2][n], D[1][2][n]) * atom->m;
   }
-
-  if (ir->iHamOrd == 4)
-  {
-     aloop = gmx_mtop_atomloop_all_init(mtop);
-     while (gmx_mtop_atomloop_all_next(aloop, &n, &atom))
-     {
-        termD11 += iprod(D[1][1][n], D[1][1][n]) * atom->m;
-        termD112 += iprod(D[1][2][n], D[1][2][n]) * atom->m * cuberoot(sqr(Q[0][1])); // MARIO
-        termD12 += iprod(D[1][1][n], D[2][1][n]) * atom->m;
-        termD13 += iprod(D[1][1][n], D[3][1][n]) * atom->m * cuberoot(sqr(Q[0][1]));
-        termD22 += iprod(D[2][1][n], D[2][1][n]) * atom->m * cuberoot(sqr(Q[0][1]));
-     }
-     termQ0 = Q[0][1]; // MARIO
-     termQ1 = Q[1][1] / cuberoot(Q[0][1]);
-     termQ2 = Q[2][1] / cuberoot(Q[0][1]);
-     termQ11 = Q[1][1] * Q[1][1] / cuberoot(sqr(sqr(Q[0][1])));
-     termQ112 = Q[1][2] * Q[1][2] * mu; // MARIO
-     termQ13 = Q[1][1] * Q[3][1] * mu;
-     termQ22 = Q[2][1] * Q[2][1] * mu;
-     /* Shadow Hamiltonian */
-     dShadow = ((2.0*(termQ13 + termD13) - (termQ22 + termD22)) + 4.0*(2.0*(termQ2 - termQ11/3.0) * termD11 - termQ1 * termD12)/3.0) / (24.0*dt2) + Upot + ir->dAlphaPress*termQ0/PRESFAC + 0.5*(termD112 + termQ112)/dt2;
-//     dShadow = ((2.0*(termQ13 + termD13) - (termQ22 + termD22)) + 4.0*(2.0*(termQ2 - termQ11/3.0) * termD11 - termQ1 * termD12)/3.0) / (24.0*dt2) + Upot;
-  }
-
+  termQ0 = Q[0][1];
+  termQ11 = Q[1][2] * Q[1][2] * ir->dMuMass;
+  dHamiltonian = 0.5 * termD11 / dt2 + Upot + ir->dAlphaPress * termQ0 / PRESFAC;
+  
   for (k = 0; k < 6; k++)
      for (l = 0; l < 4; l++)
         sfree(D[k][l]);
 
-  return dShadow;
+  return dHamiltonian;
 }
 
-double shadow_andersen2(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real Upot)
+double shadow_andersen(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real Upot)
 {
   rvec *D[6][4];   // Interpolation polynomials for calculating shadow hamiltonians
   real Q[6][4];
@@ -413,7 +447,6 @@ double shadow_andersen2(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], rea
      for (l = 0; l < 4; l++)
         snew(D[k][l], mtop->natoms);
   centered_differences_andersen(state, Q, D, mtop->natoms);
-//  centered_differences(state, D, mtop->natoms);
 
   gmx_mtop_atomloop_all_t aloop;
   t_atom *atom;
@@ -462,7 +495,6 @@ double shadow_andersen2(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], rea
 
   return dShadow;
 }
-
 
 /* Function for calculating interpolation polynomials using centered differences when using GSHMC and Andersen barostat */
 void centered_differences_andersen(t_state *s[7], real Q[6][4], rvec *D[6][4], int natoms)
@@ -548,7 +580,11 @@ void momentum_update(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms
                      t_forcerec *fr, gmx_localtop_t *top, tensor shake_vir,
                      gmx_rng_t rng, double *dDeltaXi, rvec *f_forw, rvec *f_back)
 {
-  real phi = ir->dPhi;
+  real phi = 0.0;
+  if (ir->met == metHMC) // HMC method
+     phi = 1.5708;
+  else
+     phi = ir->dPhi;
   real delta_t = ir->delta_t;
   real *massT = mdatoms->massT; 
   int n, d;
@@ -657,7 +693,6 @@ void momentum_update(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms
   sfree(xi_prime);
 }
 
-
 void momentum_generate(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms *mdatoms, t_state *state,
                      rvec *f, t_graph *graph, t_commrec *cr, t_nrnb *nrnb,
                      t_forcerec *fr, gmx_localtop_t *top, tensor shake_vir,
@@ -676,7 +711,6 @@ void momentum_generate(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdato
                         graph, cr, nrnb, fr, top, shake_vir);
   }
 }
-
 
 /* save or restore a global state, including: positions, velocities, forces and energies */
 void backup_state(t_state *state_a, t_state *state_b, rvec **f_a, rvec **f_b) 
@@ -814,28 +848,3 @@ void backup_state(t_state *state_a, t_state *state_b, rvec **f_a, rvec **f_b)
       copy_rvecn(*f_a, *f_b, 0, state_a->natoms);
    } 
 }
-
-static void sampling(real tempi, t_mdatoms *mdatoms, rvec xi[], gmx_rng_t rng)
-{
-  int  i,d;
-  real boltz, sd;
-
-  int start  = mdatoms->start;
-  int homenr = mdatoms->homenr;
-  int nrend  = start + homenr;
-  real *massT = mdatoms->massT;
-
-  boltz=BOLTZ*tempi;
-
-
-  for (i = start; i < nrend; i++)
-  {
-     if (massT[i] > 0)
-        sd = boltz / massT[i];
-     for (d = 0; d < DIM; d++) 
-        xi[i][d] = sd * gmx_rng_gaussian_real(rng);
-  }
-
-  return;
-}
-

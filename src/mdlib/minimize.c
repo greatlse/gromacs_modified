@@ -2036,7 +2036,7 @@ double do_steep(FILE *fplog,t_commrec *cr,
                 const char *deviceOptions,
                 unsigned long Flags,
                 gmx_runtime_t *runtime)
-{ 
+{
   const char *SD="Steepest Descents";
   em_state_t *s_min,*s_try;
   rvec       *f_global;

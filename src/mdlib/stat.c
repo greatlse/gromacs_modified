@@ -163,15 +163,16 @@ void global_stat(FILE *fplog,gmx_global_stat_t gs,
   int    nener,j;
   real   *rmsd_data=NULL;
   double nb;
-  gmx_bool   bVV,bTemp,bEner,bPres,bConstrVir,bEkinAveVel,bFirstIterate,bReadEkin;
+  gmx_bool   bVV,bVNI,bTemp,bEner,bPres,bConstrVir,bEkinAveVel,bFirstIterate,bReadEkin;
 
   bVV           = EI_VV(inputrec->eI);
+  bVNI          = EI_VNI(inputrec->eI);
   bTemp         = flags & CGLO_TEMPERATURE;
   bEner         = flags & CGLO_ENERGY;
   bPres         = (flags & CGLO_PRESSURE); 
   bConstrVir    = (flags & CGLO_CONSTRAINT);
   bFirstIterate = (flags & CGLO_FIRSTITERATE);
-  bEkinAveVel   = (inputrec->eI==eiVV || (inputrec->eI==eiVVAK && bPres));
+  bEkinAveVel   = (inputrec->eI==eiVV || bVNI || (inputrec->eI==eiVVAK && bPres));
   bReadEkin     = (flags & CGLO_READEKIN);
 
   rb   = gs->rb;
@@ -199,7 +200,7 @@ void global_stat(FILE *fplog,gmx_global_stat_t gs,
   }
   
 /* We need the force virial and the kinetic energy for the first time through with velocity verlet */
-  if (bTemp || !bVV)
+  if (bTemp || !bVV || !bVNI)
   {
       if (ekind) 
       {
@@ -228,7 +229,7 @@ void global_stat(FILE *fplog,gmx_global_stat_t gs,
   }      
   where();
   
-  if ((bPres || !bVV) && bFirstIterate)
+  if ((bPres || !bVV || !bVNI) && bFirstIterate)
   {
       ifv = add_binr(rb,DIM*DIM,fvir[0]);
   }
@@ -318,7 +319,7 @@ void global_stat(FILE *fplog,gmx_global_stat_t gs,
   }
 
   /* We need the force virial and the kinetic energy for the first time through with velocity verlet */
-  if (bTemp || !bVV)
+  if (bTemp || !bVV || !bVNI)
   {
       if (ekind) 
       {
@@ -341,7 +342,7 @@ void global_stat(FILE *fplog,gmx_global_stat_t gs,
           where();
       }
   }
-  if ((bPres || !bVV) && bFirstIterate)
+  if ((bPres || !bVV || !bVNI) && bFirstIterate)
   {
       extract_binr(rb,ifv ,DIM*DIM,fvir[0]);
   }

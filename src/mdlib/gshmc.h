@@ -9,15 +9,20 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *befor[7],
                real Uold, real Unew, gmx_rng_t rng, int iTest, real Etotold, real Etotnew, int iTrial, double *weight,
                gmx_large_int_t step, gmx_bool *bFlip);
 
+/* Function for calculating hamiltonians in GHMC */
+double hamiltonian(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real Upot);
+
 /* Function for calculating shadow hamiltonians in GSHMC */
 double shadow(gmx_mtop_t *mtop, t_inputrec *inputrec, t_state *x[7], real Upot);
 
 /* Function for calculating interpolation polynomials using centered differences */
 void centered_differences(t_state *x[7], rvec *Q[6][4], int natoms);
 
+/* Function for calculating hamiltonians in GHMC and Andersen barostat */
+double hamiltonian_andersen(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real Upot);
+
 /* Function for calculating shadow hamiltonians in GSHMC and Andersen barostat */
 double shadow_andersen(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real Etot);
-double shadow_andersen2(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real Etot);
 
 /* Function for calculating interpolation polynomials using centered differences when using GSHMC and Andersen barostat */
 void centered_differences_andersen(t_state *s[7], real Q[6][4], rvec *D[6][4], int natoms);

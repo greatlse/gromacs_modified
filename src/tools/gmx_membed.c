@@ -1166,7 +1166,7 @@ static void compute_globals(FILE *fplog, gmx_global_stat_t gstat, t_commrec *cr,
 
     /* we calculate a full state kinetic energy either with full-step velocity verlet
        or half step where we need the pressure */
-    bEkinAveVel = (ir->eI==eiVV || (ir->eI==eiVVAK && IR_NPT_TROTTER(ir) && bPres) || bReadEkin);
+    bEkinAveVel = (ir->eI==eiVV || ir->eI==eiVNI5 || ir->eI==eiVNI7 || ir->eI==eiVNI9 || (ir->eI==eiVVAK && IR_NPT_TROTTER(ir) && bPres) || bReadEkin);
 
     /* in initalization, it sums the shake virial in vv, and to
        sums ekinh_old in leapfrog (or if we are calculating ekinh_old for other reasons */
@@ -1873,7 +1873,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     gmx_bool        bTCR=FALSE,bConverged=TRUE,bOK,bSumEkinhOld,bExchanged;
     gmx_bool        bAppend;
     gmx_bool        bResetCountersHalfMaxH=FALSE;
-    gmx_bool        bVV,bIterations,bIterate,bFirstIterate,bTemp,bPres,bTrotter;
+    gmx_bool        bVV,bVNI,bIterations,bIterate,bFirstIterate,bTemp,bPres,bTrotter;
     real        temp0,dvdl;
     int         a0,a1,ii;
     rvec        *xcopy=NULL,*vcopy=NULL,*cbuf=NULL;
@@ -1892,6 +1892,10 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     /* Temporary addition for FAHCORE checkpointing */
     int chkpt_ret;
 #endif
+
+    /* Additional parameters for the new integrators VNI */
+    int intSteps = 0;
+    double intCoeffs[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
     /* Check for special mdrun options */
     bRerunMD = (Flags & MD_RERUN);
@@ -1913,14 +1917,15 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     /* md-vv uses averaged full step velocities for T-control
        md-vv-avek uses averaged half step velocities for T-control (but full step ekin for P control)
        md uses averaged half step kinetic energies to determine temperature unless defined otherwise by GMX_EKIN_AVE_VEL; */
-    bVV = EI_VV(ir->eI);
-    if (bVV) /* to store the initial velocities while computing virial */
+    bVV  = EI_VV(ir->eI);
+    bVNI = EI_VNI(ir->eI);
+    if (bVV || bVNI) /* to store the initial velocities while computing virial */
     {
         snew(cbuf,top_global->natoms);
     }
     /* all the iteratative cases - only if there are constraints */
     bIterations = ((IR_NPT_TROTTER(ir)) && (constr) && (!bRerunMD));
-    bTrotter = (bVV && (IR_NPT_TROTTER(ir) || (IR_NVT_TROTTER(ir))));
+    bTrotter = ((bVV || bVNI) && (IR_NPT_TROTTER(ir) || (IR_NVT_TROTTER(ir))));
 
     if (bRerunMD)
     {
@@ -2160,8 +2165,8 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
 
     /* I'm assuming we need global communication the first time! MRS */
     cglo_flags = (CGLO_TEMPERATURE | CGLO_GSTAT
-                  | (bVV ? CGLO_PRESSURE:0)
-                  | (bVV ? CGLO_CONSTRAINT:0)
+                  | ((bVV || bVNI) ? CGLO_PRESSURE:0)
+                  | ((bVV || bVNI) ? CGLO_CONSTRAINT:0)
                   | (bRerunMD ? CGLO_RERUNMD:0)
                   | ((Flags & MD_READ_EKIN) ? CGLO_READEKIN:0));
 
@@ -2328,7 +2333,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     bFirstStep = TRUE;
     /* Skip the first Nose-Hoover integration when we get the state from tpx */
     bStateFromTPX = !opt2bSet("-cpi",nfile,fnm);
-    bInitStep = bFirstStep && (bStateFromTPX || bVV);
+    bInitStep = bFirstStep && (bStateFromTPX || bVV || bVNI);
     bStartingFromCpt = (Flags & MD_STARTFROMCPT) && bInitStep;
     bLastStep    = FALSE;
     bSumEkinhOld = FALSE;
@@ -2682,9 +2687,9 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
 
         /*  ############### START FIRST UPDATE HALF-STEP ############### */
 
-        if (bVV && !bStartingFromCpt && !bRerunMD)
+        if ((bVV || bVNI) && !bStartingFromCpt && !bRerunMD)
         {
-            if (ir->eI == eiVV)
+            if (ir->eI == eiVV || bVNI)
             {
                 if (bInitStep)
                 {
@@ -2711,7 +2716,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                 update_coords(fplog,step,ir,mdatoms,state,
                               f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
                               ekind,M,wcycle,upd,bInitStep,etrtVELOCITY1,
-                              cr,nrnb,constr,&top->idef,enerd,total_vir);
+                              cr,nrnb,constr,&top->idef,enerd,total_vir,intSteps,intCoeffs);
 
                 if (bIterations)
                 {
@@ -2772,11 +2777,11 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                 }
 
 
-                if (bVV) {
+                if (bVV || bVNI) {
                     /* if VV, compute the pressure and constraints */
                     /* if VV2, the pressure and constraints only if using pressure control.*/
-                    bPres = (ir->eI==eiVV || IR_NPT_TROTTER(ir));
-                    bTemp = ((ir->eI==eiVV &&(!bInitStep)) || (ir->eI==eiVVAK && IR_NPT_TROTTER(ir)));
+                    bPres = (ir->eI==eiVV || bVNI || IR_NPT_TROTTER(ir));
+                    bTemp = (((ir->eI==eiVV || bVNI) &&(!bInitStep)) || (ir->eI==eiVVAK && IR_NPT_TROTTER(ir)));
                     compute_globals(fplog,gstat,cr,ir,fr,ekind,state,state_global,mdatoms,nrnb,vcm,
                                     wcycle,enerd,force_vir,shake_vir,total_vir,pres,mu_tot,
                                     constr,NULL,FALSE,state->box,
@@ -2800,7 +2805,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                    EkinAveVel because it's needed for the pressure */
 
                 /* temperature scaling and pressure scaling to produce the extended variables at t+dt */
-                if (bVV && !bInitStep)
+                if ((bVV || bVNI) && !bInitStep)
                 {
 		  trotter_update(ir,step,ekind,enerd,state,total_vir,mdatoms,&MassQ, trotter_seq,ettTSEQ2);
                 }
@@ -2817,14 +2822,14 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             if (bTrotter && !bInitStep) {
                 copy_mat(shake_vir,state->svir_prev);
                 copy_mat(force_vir,state->fvir_prev);
-                if (IR_NVT_TROTTER(ir) && ir->eI==eiVV) {
+                if (IR_NVT_TROTTER(ir) && (ir->eI==eiVV || bVNI)) {
                     /* update temperature and kinetic energy now that step is over - this is the v(t+dt) point */
-                    enerd->term[F_TEMP] = sum_ekin(&(ir->opts),ekind,NULL,(ir->eI==eiVV),FALSE,FALSE);
+                    enerd->term[F_TEMP] = sum_ekin(&(ir->opts),ekind,NULL,(ir->eI==eiVV || bVNI),FALSE,FALSE);
                     enerd->term[F_EKIN] = trace(ekind->ekin);
                 }
             }
             /* if it's the initial step, we performed this first step just to get the constraint virial */
-            if (bInitStep && ir->eI==eiVV) {
+            if (bInitStep && (ir->eI==eiVV || bVNI)) {
                 copy_rvecn(cbuf,state->v,0,state->natoms);
             }
 
@@ -2839,7 +2844,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
         }
 
         /* MRS -- now done iterating -- compute the conserved quantity */
-        if (bVV) {
+        if (bVV || bVNI) {
             last_conserved = 0;
             if (IR_NVT_TROTTER(ir) || IR_NPT_TROTTER(ir))
             {
@@ -2850,7 +2855,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                     last_conserved -= enerd->term[F_DISPCORR];
                 }
             }
-            if (ir->eI==eiVV) {
+            if (ir->eI==eiVV || bVNI) {
                 last_ekin = enerd->term[F_EKIN]; /* does this get preserved through checkpointing? */
             }
         }
@@ -2945,7 +2950,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
         GMX_MPE_LOG(ev_output_finish);
 
         /* kludge -- virial is lost with restart for NPT control. Must restart */
-        if (bStartingFromCpt && bVV)
+        if (bStartingFromCpt && (bVV || bVNI))
         {
             copy_mat(state->svir_prev,shake_vir);
             copy_mat(state->fvir_prev,force_vir);
@@ -3131,11 +3136,11 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                 update_pcouple(fplog,step,ir,state,pcoupl_mu,M,wcycle,
                                 upd,bInitStep);
 
-		if (bVV)
+		if (bVV || bVNI)
 		{
 		    /* velocity half-step update */
 		    update_coords(fplog,step,ir,mdatoms,state,f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
-				  ekind,M,wcycle,upd,FALSE,etrtVELOCITY2,cr,nrnb,constr,&top->idef,enerd,total_vir);
+				  ekind,M,wcycle,upd,FALSE,etrtVELOCITY2,cr,nrnb,constr,&top->idef,enerd,total_vir,intSteps,intCoeffs);
 		}
 
                 /* Above, initialize just copies ekinh into ekin,
@@ -3149,7 +3154,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                 }
 
                 update_coords(fplog,step,ir,mdatoms,state,f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
-                              ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir);
+                              ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir,intSteps,intCoeffs);
                 wallcycle_stop(wcycle,ewcUPDATE);
 
                 update_constraints(fplog,step,&dvdl,ir,ekind,mdatoms,state,graph,f,
@@ -3173,7 +3178,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                     copy_rvecn(cbuf,state->x,0,state->natoms);
 
                     update_coords(fplog,step,ir,mdatoms,state,f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
-                                  ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir);
+                                  ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir,intSteps,intCoeffs);
                     wallcycle_stop(wcycle,ewcUPDATE);
 
                     /* do we need an extra constraint here? just need to copy out of state->v to upd->xp? */
@@ -3236,9 +3241,9 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                             lastbox,
                             top_global,&pcurr,top_global->natoms,&bSumEkinhOld,
                             cglo_flags
-                            | (!EI_VV(ir->eI) ? CGLO_ENERGY : 0)
-                            | (!EI_VV(ir->eI) ? CGLO_TEMPERATURE : 0)
-                            | (!EI_VV(ir->eI) || bRerunMD ? CGLO_PRESSURE : 0)
+                            | (!EI_VV(ir->eI) && !EI_VNI(ir->eI) ? CGLO_ENERGY : 0)
+                            | (!EI_VV(ir->eI) && !EI_VNI(ir->eI) ? CGLO_TEMPERATURE : 0)
+                            | ((!EI_VV(ir->eI) && !EI_VNI(ir->eI)) || bRerunMD ? CGLO_PRESSURE : 0)
                             | (bIterations && iterate.bIterate ? CGLO_ITERATE : 0)
                             | (bFirstIterate ? CGLO_FIRSTITERATE : 0)
                             | CGLO_CONSTRAINT
@@ -3318,7 +3323,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
 
         sum_dhdl(enerd,state->lambda,ir);
         /* use the directly determined last velocity, not actually the averaged half steps */
-        if (bTrotter && ir->eI==eiVV)
+        if (bTrotter && (ir->eI==eiVV || bVNI))
         {
             enerd->term[F_EKIN] = last_ekin;
         }
@@ -3374,7 +3379,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
         {
             gmx_bool do_dr,do_or;
 
-            if (!(bStartingFromCpt && (EI_VV(ir->eI))))
+            if (!(bStartingFromCpt && (EI_VV(ir->eI) || EI_VNI(ir->eI))))
             {
                 if (bNstEner)
                 {

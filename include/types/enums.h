@@ -116,17 +116,18 @@ enum {
    energy for temperature control */
 
 enum {
-  eiMD, eiSteep, eiCG, eiBD, eiSD2, eiNM, eiLBFGS, eiTPI, eiTPIC, eiSD1, eiVV, eiVVAK, eiNR
+  eiMD, eiSteep, eiCG, eiBD, eiSD2, eiNM, eiLBFGS, eiTPI, eiTPIC, eiSD1, eiVV, eiVVAK, eiVNI5, eiVNI7, eiVNI9, eiNR
 };
 #define EI_VV(e) ((e) == eiVV || (e) == eiVVAK)
+#define EI_VNI(e) ((e) == eiVNI5 || (e) == eiVNI7 || (e) == eiVNI9)
 #define EI_SD(e) ((e) == eiSD1 || (e) == eiSD2)
 #define EI_RANDOM(e) (EI_SD(e) || (e) == eiBD)
 /*above integrators may not conserve momenta*/
-#define EI_DYNAMICS(e) ((e) == eiMD || EI_SD(e) || (e) == eiBD || EI_VV(e))
+#define EI_DYNAMICS(e) ((e) == eiMD || EI_SD(e) || (e) == eiBD || EI_VV(e) || EI_VNI(e))
 #define EI_ENERGY_MINIMIZATION(e) ((e) == eiSteep || (e) == eiCG || (e) == eiLBFGS)
 #define EI_TPI(e) ((e) == eiTPI || (e) == eiTPIC)
 
-#define EI_STATE_VELOCITY(e) ((e) == eiMD || EI_VV(e) || EI_SD(e))
+#define EI_STATE_VELOCITY(e) ((e) == eiMD || EI_VV(e) || EI_VNI(e) || EI_SD(e))
 
 enum {
   econtLINCS, econtSHAKE, econtNR
@@ -244,6 +245,10 @@ enum {
 
 enum {
   eMultentOptName, eMultentOptNo, eMultentOptLast, eMultentOptNR
+};
+
+enum {
+  metHMC, metGHMC, metGSHMC, metNR
 };
 
 #ifdef __cplusplus

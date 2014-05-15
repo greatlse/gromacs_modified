@@ -948,7 +948,7 @@ void do_constrain_first(FILE *fplog,gmx_constr_t constr,
               state->x,state->x,NULL,
               state->box,state->lambda,&dvdlambda,
               NULL,NULL,nrnb,econqCoord,ir->epc==epcMTTK,state->veta,state->veta);
-    if (EI_VV(ir->eI)) 
+    if (EI_VV(ir->eI) || EI_VNI(ir->eI)) 
     {
         /* constrain the inital velocity, and save it */
         /* also may be useful if we need the ekin from the halfstep for velocity verlet */
@@ -960,7 +960,7 @@ void do_constrain_first(FILE *fplog,gmx_constr_t constr,
                   NULL,NULL,nrnb,econqVeloc,ir->epc==epcMTTK,state->veta,state->veta);
     }
     /* constrain the inital velocities at t-dt/2 */
-    if (EI_STATE_VELOCITY(ir->eI) && ir->eI!=eiVV)
+    if (EI_STATE_VELOCITY(ir->eI) && ir->eI!=eiVV && !EI_VNI(ir->eI))
     {
         for(i=start; (i<end); i++) 
         {

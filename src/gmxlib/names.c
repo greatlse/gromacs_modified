@@ -53,7 +53,7 @@ const char *ens_names[ensNR+1]=
 
 const char *ei_names[eiNR+1]=
 {
-  "md", "steep", "cg", "bd", "sd", "nm", "l-bfgs", "tpi", "tpic", "sd1", "md-vv", "md-vv-avek",NULL 
+  "md", "steep", "cg", "bd", "sd", "nm", "l-bfgs", "tpi", "tpic", "sd1", "md-vv", "md-vv-avek", "vni5", "vni7", "vni9", NULL 
 };
 
 const char *bool_names[BOOL_NR+1]=
@@ -209,3 +209,6 @@ const char *eMultentOpt_names[eMultentOptNR+1] = {
   "multiple_entries", "no", "use_last", NULL
 };
 
+const char *method_names[metNR+1] = {
+  "HMC", "GHMC", "GSHMC", NULL
+};

@@ -358,7 +358,7 @@ static void compute_globals(FILE *fplog, gmx_global_stat_t gstat, t_commrec *cr,
     int  i,gsi;
     real gs_buf[eglsNR];
     tensor corr_vir,corr_pres,shakeall_vir;
-    gmx_bool bEner,bPres,bTemp, bVV;
+    gmx_bool bEner,bPres,bTemp,bVV;
     gmx_bool bRerunMD, bStopCM, bGStat, bIterate, 
         bFirstIterate,bReadEkin,bEkinAveVel,bScaleEkin, bConstrain;
     real ekin,temp,prescorr,enercorr,dvdlcorr;
@@ -380,7 +380,7 @@ static void compute_globals(FILE *fplog, gmx_global_stat_t gstat, t_commrec *cr,
     /* we calculate a full state kinetic energy either with full-step velocity verlet
        or half step where we need the pressure */
     
-    bEkinAveVel = (ir->eI==eiVV || (ir->eI==eiVVAK && bPres) || bReadEkin);
+    bEkinAveVel = (ir->eI==eiVV || ir->eI==eiVNI5 || ir->eI==eiVNI7 || ir->eI==eiVNI9 || (ir->eI==eiVVAK && bPres) || bReadEkin);
     
     /* in initalization, it sums the shake virial in vv, and to 
        sums ekinh_old in leapfrog (or if we are calculating ekinh_old) for other reasons */
@@ -1175,7 +1175,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     gmx_bool        bTCR=FALSE,bConverged=TRUE,bOK,bSumEkinhOld,bExchanged;
     gmx_bool        bAppend;
     gmx_bool        bResetCountersHalfMaxH=FALSE;
-    gmx_bool        bVV,bIterations,bFirstIterate,bTemp,bPres,bTrotter;
+    gmx_bool        bVV,bVNI,bIterations,bFirstIterate,bTemp,bPres,bTrotter;
     real        temp0,mu_aver=0,dvdl;
     int         a0,a1,gnx=0,ii;
     atom_id     *grpindex=NULL;
@@ -1203,9 +1203,9 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     int chkpt_ret;
 #endif
 
-       /* ########  GSHMC: Generalized Shadow Hybrid Monte Carlo  ###### */
+       /* ########  HMC, GHMC and GSHMC methods  ###### */
        /* Declare and initialize variables */
-       int GSHMC_part = NONE;
+       int GHMC_part = NONE;
        int stepMD = back3;
        gmx_large_int_t bck_step = back3;
        int stepPM = curre, iTrial = 1;
@@ -1233,13 +1233,18 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
        int iCountX=1, iCountV=1, iCountF=1, iCountXTC=1, iCountE=1;
        int seed;
        gmx_rng_t rng;
-       /* used for Pande test */
+       /* Pande test */
        gmx_bool bFlip = FALSE;
+       /* New integrators VNI */
+       int    intSteps = 0;
+       int    limitSteps = 0;
+       double intCoeffs[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+       double da1 = 0.0, da2 = 0.0, db1 = 0.0, db2 = 0.0, db3 = 0.0;
  
        /* with domain decomposition, energy must be calculated at every step 
           of the interpolation */
        int bck_nstcalcenergy = ir->nstcalcenergy;
-       /* ########  GSHMC: Generalized Shadow Hybrid Monte Carlo  ###### */
+       /* ########  HMC, GHMC and GSHMC methods  ###### */
 
     /* Check for special mdrun options */
     bRerunMD = (Flags & MD_RERUN);
@@ -1260,14 +1265,57 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     /* md-vv uses averaged full step velocities for T-control 
        md-vv-avek uses averaged half step velocities for T-control (but full step ekin for P control)
        md uses averaged half step kinetic energies to determine temperature unless defined otherwise by GMX_EKIN_AVE_VEL; */
-    bVV = EI_VV(ir->eI);
-    if (bVV) /* to store the initial velocities while computing virial */
+    bVV  = EI_VV(ir->eI);
+    bVNI = EI_VNI(ir->eI);
+     
+    /* Define the values used for the integrators (VV or VNI) */
+    if (bVV || bVNI)
+    {
+        int x;
+        if (ir->eI==eiVV || ir->eI==eiVVAK)
+        {
+            limitSteps = 1;
+            intCoeffs[0] = 0.5, intCoeffs[1] = 1.0;
+        }
+        if (ir->eI==eiVNI5)
+        {
+            limitSteps = 2;
+            // [b1, a1, b2, a1,  0,  0,  0,  0]
+            da1 = 0.5, db1 = (3.0 - sqrt(3.0))/6.0, db2 = 0.5 - db1;
+            intCoeffs[0] = db1, intCoeffs[1] = da1;
+            intCoeffs[2] = db2, intCoeffs[3] = da1;
+        }
+        if (ir->eI==eiVNI7)
+        {
+            limitSteps = 3;
+            // [b1, a1, b2, a2, b2, a1,  0,  0]
+            da1 = 0.11888010966548, da2 = 0.5 - da1;
+            db1 = 0.29619504261126, db2 = 1.0 - 2.0*db1;
+            intCoeffs[0] = db1, intCoeffs[1] = da1;
+            intCoeffs[2] = db2, intCoeffs[3] = da2;
+            intCoeffs[4] = db2, intCoeffs[5] = da1;
+        }
+        if (ir->eI==eiVNI9)
+        {
+            limitSteps = 4;
+            // [b1, a1, b2, a2, b3, a2, b2, a1]
+            da1 = 0.071353913450279725904;
+            da2 = 0.268548791161230105820, db3 = 1.0 - 2.0*da1 - 2.0*da2;
+            db1 = 0.191667800000000000000, db2 = 0.5 - db1;
+            intCoeffs[0] = db1, intCoeffs[1] = da1;
+            intCoeffs[2] = db2, intCoeffs[3] = da2;
+            intCoeffs[4] = db3, intCoeffs[5] = da2;
+            intCoeffs[6] = db2, intCoeffs[7] = da1;
+        }
+    }
+
+    if (bVV || bVNI) /* to store the initial velocities while computing virial */
     {
         snew(cbuf,top_global->natoms);
     }
     /* all the iteratative cases - only if there are constraints */ 
     bIterations = ((IR_NPT_TROTTER(ir)) && (constr) && (!bRerunMD));
-    bTrotter = (bVV && (IR_NPT_TROTTER(ir) || (IR_NVT_TROTTER(ir))));        
+    bTrotter = ((bVV || bVNI) && (IR_NPT_TROTTER(ir) || (IR_NVT_TROTTER(ir))));        
     
     if (bRerunMD)
     {
@@ -1419,12 +1467,13 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                             nrnb,wcycle,FALSE);
     }
 
-
        /* ########  GSHMC: Generalized Shadow Hybrid Monte Carlo  ###### */
-       if (ir->bGSHMC)
+       //if (ir->bGSHMC)
+       //if (ir->met != NULL) // PRUEBA
+       if (ir->met == metHMC || ir->met == metGHMC || ir->met == metGSHMC)
        {
           /* initialize variables for saving and restoring the state */
-          GSHMC_part = MDMC;
+          GHMC_part = MDMC;
           for (i=back3; i<=forw3; i++)
           {
              snew(s_beforMD[i], 1);
@@ -1543,8 +1592,8 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
   
     /* I'm assuming we need global communication the first time! MRS */
     cglo_flags = (CGLO_TEMPERATURE | CGLO_GSTAT
-                  | (bVV ? CGLO_PRESSURE:0)
-                  | (bVV ? CGLO_CONSTRAINT:0)
+                  | ((bVV || bVNI) ? CGLO_PRESSURE:0)
+                  | ((bVV || bVNI) ? CGLO_CONSTRAINT:0)
                   | (bRerunMD ? CGLO_RERUNMD:0)
                   | ((Flags & MD_READ_EKIN) ? CGLO_READEKIN:0));
     
@@ -1575,7 +1624,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             copy_mat(ekind->tcstat[i].ekinh,ekind->tcstat[i].ekinh_old);
         } 
     }
-    if (ir->eI != eiVV) 
+    if (ir->eI != eiVV && ir->eI != eiVNI5 && ir->eI != eiVNI7 && ir->eI != eiVNI9) 
     {
         enerd->term[F_TEMP] *= 2; /* result of averages being done over previous and current step,
                                      and there is no previous step */
@@ -1603,7 +1652,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     /* Andersen barostat*/
     if (ir->epc == epcANDERSEN)
     {
-        state->q = state->vol0; // PRUEBA: missing v_q?
+        state->q = state->vol0;
     }
     /* Andersen barostat*/
     
@@ -1731,7 +1780,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     bFirstStep = TRUE;
     /* Skip the first Nose-Hoover integration when we get the state from tpx */
     bStateFromTPX = !opt2bSet("-cpi",nfile,fnm);
-    bInitStep = bFirstStep && (bStateFromTPX || bVV);
+    bInitStep = bFirstStep && (bStateFromTPX || bVV || bVNI);
     bStartingFromCpt = (Flags & MD_STARTFROMCPT) && bInitStep;
     bLastStep    = FALSE;
     bSumEkinhOld = FALSE;
@@ -1757,8 +1806,8 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     /* and stop now if we should */
     bLastStep = (bRerunMD || (ir->nsteps >= 0 && step_rel > ir->nsteps) ||
                  ((multisim_nsteps >= 0) && (step_rel >= multisim_nsteps )));
-    while (!bLastStep || (bRerunMD && bNotLastFrame)) {
-
+    while (!bLastStep || (bRerunMD && bNotLastFrame))
+    {
         wallcycle_start(wcycle,ewcSTEP);
 
         GMX_MPE_LOG(ev_timestep1);
@@ -1884,16 +1933,16 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             /* Determine whether or not to do Neighbour Searching and LR */
             bNStList = (ir->nstlist > 0  && step % ir->nstlist == 0);
 
-/* GSHMC */
-if ( (GSHMC_part == MDMC && stepMD%ir->iL <= forw3) || GSHMC_part == PMMC ) 
-{
-   // avoid neighbour update during the 7 steps of the interpolation 
-   bNStList = FALSE;
-   // force global communication during the 7 steps of the interpolation,
-   // otherwise the shadow hamiltonians lose precision 
-   ir->nstcalcenergy = 1;
+        /* GSHMC */
+        if ( (GHMC_part == MDMC && stepMD%ir->iL <= forw3) || GHMC_part == PMMC ) 
+        {
+            // avoid neighbour update during the 7 steps of the interpolation 
+            bNStList = FALSE;
+            // force global communication during the 7 steps of the interpolation,
+            // otherwise the shadow hamiltonians lose precision 
+            ir->nstcalcenergy = 1;
 }
-/* GSHMC */
+        /* GSHMC */
             
             bNS = (bFirstStep || bExchanged || bNStList ||
                    (ir->nstlist == -1 && nlh.nabnsb > 0));
@@ -2127,10 +2176,10 @@ if ( (GSHMC_part == MDMC && stepMD%ir->iL <= forw3) || GSHMC_part == PMMC )
             fflush(fplog);
         }
 
-        if (bVV && !bStartingFromCpt && !bRerunMD)
+        if ((bVV || bVNI) && !bStartingFromCpt && !bRerunMD)
         /*  ############### START FIRST UPDATE HALF-STEP FOR VV METHODS############### */
         {
-            if (ir->eI==eiVV && bInitStep) 
+            if ((ir->eI==eiVV || ir->eI==eiVNI5 || ir->eI==eiVNI7 || ir->eI==eiVNI9) && bInitStep) 
             {
                 /* if using velocity verlet with full time step Ekin,
                  * take the first half step only to compute the 
@@ -2147,7 +2196,7 @@ if ( (GSHMC_part == MDMC && stepMD%ir->iL <= forw3) || GSHMC_part == PMMC )
             update_coords(fplog,step,ir,mdatoms,state,
                           f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
                           ekind,M,wcycle,upd,bInitStep,etrtVELOCITY1,
-                          cr,nrnb,constr,&top->idef,enerd,total_vir);
+                          cr,nrnb,constr,&top->idef,enerd,total_vir,&intSteps,&intCoeffs);
 
             if (bIterations)
             {
@@ -2218,7 +2267,7 @@ if ( (GSHMC_part == MDMC && stepMD%ir->iL <= forw3) || GSHMC_part == PMMC )
                 /*bPres = (ir->eI==eiVV || IR_NPT_TROTTER(ir)); */
                     /*bTemp = ((ir->eI==eiVV &&(!bInitStep)) || (ir->eI==eiVVAK && IR_NPT_TROTTER(ir)));*/
                 bPres = TRUE;
-                bTemp = ((ir->eI==eiVV &&(!bInitStep)) || (ir->eI==eiVVAK));
+                bTemp = (((ir->eI==eiVV || ir->eI==eiVNI5 || ir->eI==eiVNI7 || ir->eI==eiVNI9) &&(!bInitStep)) || (ir->eI==eiVVAK));
                 compute_globals(fplog,gstat,cr,ir,fr,ekind,state,state_global,mdatoms,nrnb,vcm,
                                 wcycle,enerd,force_vir,shake_vir,total_vir,pres,mu_tot,
                                 constr,NULL,FALSE,state->box,
@@ -2265,14 +2314,14 @@ if ( (GSHMC_part == MDMC && stepMD%ir->iL <= forw3) || GSHMC_part == PMMC )
             if (bTrotter && !bInitStep) {
                 copy_mat(shake_vir,state->svir_prev);
                 copy_mat(force_vir,state->fvir_prev);
-                if (IR_NVT_TROTTER(ir) && ir->eI==eiVV) {
+                if (IR_NVT_TROTTER(ir) && (ir->eI==eiVV || bVNI)) {
                     /* update temperature and kinetic energy now that step is over - this is the v(t+dt) point */
-                    enerd->term[F_TEMP] = sum_ekin(&(ir->opts),ekind,NULL,(ir->eI==eiVV),FALSE,FALSE);
+                    enerd->term[F_TEMP] = sum_ekin(&(ir->opts),ekind,NULL,(ir->eI==eiVV || bVNI),FALSE,FALSE);
                     enerd->term[F_EKIN] = trace(ekind->ekin);
                 }
             }
             /* if it's the initial step, we performed this first step just to get the constraint virial */
-            if (bInitStep && ir->eI==eiVV) {
+            if (bInitStep && (ir->eI==eiVV || bVNI)) {
                 copy_rvecn(cbuf,state->v,0,state->natoms);
             }
             
@@ -2286,9 +2335,9 @@ if ( (GSHMC_part == MDMC && stepMD%ir->iL <= forw3) || GSHMC_part == PMMC )
         }
     
         /* MRS -- now done iterating -- compute the conserved quantity */
-        if (bVV) {
+        if (bVV || bVNI) {
             saved_conserved_quantity = compute_conserved_from_auxiliary(ir,state,&MassQ);
-            if (ir->eI==eiVV) 
+            if (ir->eI==eiVV || bVNI) 
             {
                 last_ekin = enerd->term[F_EKIN]; /* does this get preserved through checkpointing? */
             }
@@ -2303,12 +2352,15 @@ if ( (GSHMC_part == MDMC && stepMD%ir->iL <= forw3) || GSHMC_part == PMMC )
 
 
         /* ###########  GSHMC: Generalized Shadow Hybrid Monte Carlo  ######### */
-if (ir->bGSHMC && step_rel != 0) {
-
+        //if (ir->bGSHMC && step_rel != 0) {
+        if (step_rel == 0)
+           intSteps = 0;
+        if ((ir->met == metHMC || ir->met == metGHMC || ir->met == metGSHMC) && step_rel != 0 && intSteps == limitSteps) {
+        intSteps = 0;
                  /* *** PART 1: Molecular Dynamics Monte Carlo *** */
         /* when we are completing the MD part of GSHMC, save the positions 
            at t-3, t-2, t-1, t, t+1, t+2, t+3 for interpolation polynomial */
-        if (GSHMC_part == MDMC)
+        if (GHMC_part == MDMC)
         {
            /* first 7 timesteps, fill in beforMD */
            if (stepMD <= forw3)
@@ -2325,11 +2377,12 @@ if (ir->bGSHMC && step_rel != 0) {
                  if (stepMD == curre)
                  {
                     u_beforMD = enerd->term[F_EPOT];
-                 /* Andersen barostat */
+                    /* Andersen barostat */
                     k_beforMD = enerd->term[F_EKIN];
                     Etot_beforMD = u_beforMD + k_beforMD;
                     if (ir->epc == epcANDERSEN)
                        Etot_beforMD += 0.5*(ir->dMuMass)*(sqr(state->v_q)) + (state->q)*(ir->dAlphaPress);
+                    /* Andersen barostat */
                  }
               }
            }
@@ -2353,12 +2406,13 @@ if (ir->bGSHMC && step_rel != 0) {
                     if (i == curre)
                     {
                        u_afterMD = enerd->term[F_EPOT];
-                    /* Andersen barostat */
+                       /* Andersen barostat */
                        k_afterMD = enerd->term[F_EKIN];
                        Etot_afterMD = u_afterMD + k_afterMD;
 
                        if (ir->epc == epcANDERSEN)
                           Etot_afterMD += 0.5*(ir->dMuMass)*(sqr(state->v_q)) + (state->q)*(ir->dAlphaPress);
+                       /* Andersen barostat */
                     }
                  }
               }
@@ -2444,7 +2498,7 @@ if (ir->bGSHMC && step_rel != 0) {
                  /* prepare for part 2: PMMC */
                  bck_step = step;                 
 
-                 GSHMC_part = PMMC; 
+                 GHMC_part = PMMC; 
                  stepPM = curre;
                  iTrial = 1;
               } //  end of if (stepMD % ir->iL == forw3)
@@ -2478,12 +2532,22 @@ reload: // goto point for momentum update retrials
 
 
         /* *** PART 2: Partial Momentum update Monte Carlo *** */
-        if (GSHMC_part == PMMC) 
+        if (GHMC_part == PMMC) 
         {
            if (DOMAINDECOMP(cr))
               dd_collect_state(cr->dd,state,state_global);
            else if (cr->nnodes > 1) // Particle decomposition, collect the data on the master node
               move_rvecs(cr,FALSE,FALSE,GMX_LEFT,GMX_RIGHT, state_global->x, NULL, (cr->nnodes-cr->npmenodes)-1,NULL);
+
+           /*if (ir->met == metGHMC || ir->met == metHMC) // PRUEBA
+           {
+               momentum_update(fplog, constr, ir, mdatoms, state, f, graph, cr, nrnb, fr, top, 
+                               shake_vir, rng, &dDeltaXi, f_afterMD[forw1], f_afterMD[back1]);
+               momentum_flip(state->natoms, state->v);
+               GHMC_part = MDMC;
+           }
+           else
+           {*/
 
            switch (stepPM)
            {
@@ -2554,7 +2618,7 @@ reload: // goto point for momentum update retrials
                     backup_state(state_global, g_beforMD[forw3], NULL, NULL);
 
                  /* Perform Metropolis test for the updated momentum */
-                 if (MASTER(cr))
+                 if (MASTER(cr) && ir->met == metGSHMC) // PRUEBA
                  {
                     if (debug)
                     {
@@ -2567,7 +2631,7 @@ reload: // goto point for momentum update retrials
                  if (PAR(cr))
                     gmx_bcast(sizeof(int), &iMetro, cr);
 
-                 if (iMetro == REJECTED && iTrial < ir->iMomUpd)
+                 if (iMetro == REJECTED && iTrial < ir->iMomUpd && ir->met == metGSHMC) // PRUEBA
                  {
                     /* recover original velocity and update again */
                     backup_state(s_afterMD[curre], state, &f_afterMD[curre], &f); 
@@ -2581,7 +2645,7 @@ reload: // goto point for momentum update retrials
                     stepPM = curre;
                     goto reload;
                  }
-                 else if (iMetro == REJECTED && iTrial == ir->iMomUpd)
+                 else if (iMetro == REJECTED && iTrial == ir->iMomUpd && ir->met == metGSHMC) // PRUEBA
                  {
                     /* if no momentum updates were accepted, restore the state afterMD 
                        and continue integrating from forw3 */
@@ -2598,27 +2662,27 @@ reload: // goto point for momentum update retrials
 
                     // here this is necessary for re-updating the constr
                     bDoForce = TRUE;
-
-                    GSHMC_part = MDMC;
+                    GHMC_part = MDMC;
                     ir->nstcalcenergy = bck_nstcalcenergy;
                     step = bck_step; 
                     goto reload;
                  }
                  else //: ACCEPTED. The state beforMD is already filled in, so we continue integrating from 'forw3'
                  {
-                    GSHMC_part = MDMC;
+                    GHMC_part = MDMC;
                     ir->nstcalcenergy = bck_nstcalcenergy;
                     step = bck_step; 
                  }
                  break;
            } // end of switch(stepPM)
+           //} // PRUEBA
         } // end of GSHMC: PART 2. PMMC
 
   if (MASTER(cr) && debug)
   {
-     if (GSHMC_part == MDMC)
+     if (GHMC_part == MDMC)
         fprintf(fplog, "MDMC step %i \n", stepMD-1); 
-     if (GSHMC_part == PMMC)
+     if (GHMC_part == PMMC)
      {
         switch (stepPM)
         {
@@ -2671,7 +2735,8 @@ reload: // goto point for momentum update retrials
         if (bCPT) { mdof_flags |= MDOF_CPT; };
 
         /* GSHMC: output only after an accepted MDMC part */
-        if (ir->bGSHMC)
+        //if (ir->bGSHMC)
+        if (ir->met == metGSHMC) // PRUEBA
         {
            mdof_flags = 0;
            if (bCPT) { mdof_flags |= MDOF_CPT; };
@@ -2785,7 +2850,7 @@ reload: // goto point for momentum update retrials
         GMX_MPE_LOG(ev_output_finish);
         
         /* kludge -- virial is lost with restart for NPT control. Must restart */
-        if (bStartingFromCpt && bVV) 
+        if (bStartingFromCpt && (bVV || bVNI)) 
         {
             copy_mat(state->svir_prev,shake_vir);
             copy_mat(state->fvir_prev,force_vir);
@@ -2952,13 +3017,13 @@ reload: // goto point for momentum update retrials
                                    upd,bInitStep);
                 }
 
-                if (bVV)
+                if (bVV || bVNI)
                 {
                     /* velocity half-step update */
                     update_coords(fplog,step,ir,mdatoms,state,f,
                                   fr->bTwinRange && bNStList,fr->f_twin,fcd,
                                   ekind,M,wcycle,upd,FALSE,etrtVELOCITY2,
-                                  cr,nrnb,constr,&top->idef,enerd,total_vir);
+                                  cr,nrnb,constr,&top->idef,enerd,total_vir,&intSteps,&intCoeffs);
                 }
 
                 /* Above, initialize just copies ekinh into ekin,
@@ -2972,7 +3037,7 @@ reload: // goto point for momentum update retrials
                 }
                 
                 update_coords(fplog,step,ir,mdatoms,state,f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
-                              ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir);
+                              ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir,&intSteps,&intCoeffs);
                 wallcycle_stop(wcycle,ewcUPDATE);
 
                 update_constraints(fplog,step,&dvdl,ir,ekind,mdatoms,state,graph,f,
@@ -2996,7 +3061,7 @@ reload: // goto point for momentum update retrials
                     copy_rvecn(cbuf,state->x,0,state->natoms);
 
                     update_coords(fplog,step,ir,mdatoms,state,f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
-                                  ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir);
+                                  ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir,&intSteps,&intCoeffs);
                     wallcycle_stop(wcycle,ewcUPDATE);
 
                     /* do we need an extra constraint here? just need to copy out of state->v to upd->xp? */
@@ -3062,9 +3127,9 @@ reload: // goto point for momentum update retrials
                             lastbox,
                             top_global,&pcurr,top_global->natoms,&bSumEkinhOld,
                             cglo_flags 
-                            | (!EI_VV(ir->eI) ? CGLO_ENERGY : 0) 
-                            | (!EI_VV(ir->eI) ? CGLO_TEMPERATURE : 0) 
-                            | (!EI_VV(ir->eI) || bRerunMD ? CGLO_PRESSURE : 0) 
+                            | ((!EI_VV(ir->eI) && !EI_VNI(ir->eI)) ? CGLO_ENERGY : 0) 
+                            | ((!EI_VV(ir->eI) && !EI_VNI(ir->eI)) ? CGLO_TEMPERATURE : 0) 
+                            | ((!EI_VV(ir->eI) && !EI_VNI(ir->eI)) || bRerunMD ? CGLO_PRESSURE : 0) 
                             | (bIterations && iterate.bIterate ? CGLO_ITERATE : 0) 
                             | (bFirstIterate ? CGLO_FIRSTITERATE : 0)
                             | CGLO_CONSTRAINT 
@@ -3146,13 +3211,13 @@ reload: // goto point for momentum update retrials
         sum_dhdl(enerd,state->lambda,ir);
 
         /* use the directly determined last velocity, not actually the averaged half steps */
-        if (bTrotter && ir->eI==eiVV) 
+        if (bTrotter && (ir->eI==eiVV || bVNI)) 
         {
             enerd->term[F_EKIN] = last_ekin;
         }
         enerd->term[F_ETOT] = enerd->term[F_EPOT] + enerd->term[F_EKIN];
         
-        if (bVV)
+        if (bVV || bVNI)
         {
             enerd->term[F_ECONSERVED] = enerd->term[F_ETOT] + saved_conserved_quantity;
         }
@@ -3187,7 +3252,7 @@ reload: // goto point for momentum update retrials
         {
             gmx_bool do_dr,do_or;
             
-            if (!(bStartingFromCpt && (EI_VV(ir->eI)))) 
+            if (!(bStartingFromCpt && (EI_VV(ir->eI) || EI_VNI(ir->eI)))) 
             {
                 if (bNstEner)
                 {

@@ -277,24 +277,25 @@ typedef struct {
   real userreal2;
   real userreal3;
   real userreal4;
-  t_grpopts opts;	/* Group options				*/
-  t_cosines ex[DIM];	/* Electric field stuff	(spatial part)		*/
-  t_cosines et[DIM];	/* Electric field stuff	(time part)		*/
-  gmx_bool bQMMM;           /* QM/MM calculation                            */ 
-  int  QMconstraints;   /* constraints on QM bonds                      */
-  int  QMMMscheme;      /* Scheme: ONIOM or normal                      */
-  real scalefactor;     /* factor for scaling the MM charges in QM calc.*/
-  gmx_bool bGSHMC;      /* GSHMC flag                                     */ 
-  real dPhi;            /* parameter for partial momentum update in GSHMC */
-  int  iMomUpd;         /* number of momemtum update trials in GSHMC      */
-  gmx_bool bVarChange;  /* variable change at momentum update             */
-  int  iL;              /* number of MD steps in GSHMC                    */
-  int  iHamOrd;         /* order of accuracy for shadow hamiltonians      */
-  real dTempi;          /* target temperature for the canonical ensemble  */
-  gmx_bool bMomFlip;    /* momentum flip after MDMC rejection             */
-  gmx_bool bPandeTest;  /* Pande test                                     */
-  double dMuMass;       /* mass for the Andersen barostat                 */
-  double dAlphaPress;   /* external pressure for the Andersen barostat    */
+  t_grpopts opts;	/* Group options				 */
+  t_cosines ex[DIM];	/* Electric field stuff	(spatial part)		 */
+  t_cosines et[DIM];	/* Electric field stuff	(time part)		 */
+  gmx_bool bQMMM;       /* QM/MM calculation                             */ 
+  int  QMconstraints;   /* constraints on QM bonds                       */
+  int  QMMMscheme;      /* Scheme: ONIOM or normal                       */
+  real scalefactor;     /* factor for scaling the MM charges in QM calc. */
+  //gmx_bool bGSHMC;      /* GSHMC flag                                    */ 
+  int met;              /* choise of sampling methodology                */ 
+  real dPhi;            /* parameter for partial momentum update in GSHMC*/
+  int  iMomUpd;         /* number of momemtum update trials in GSHMC     */
+  gmx_bool bVarChange;  /* variable change at momentum update            */
+  int  iL;              /* number of MD steps in GSHMC                   */
+  int  iHamOrd;         /* order of accuracy for shadow hamiltonians     */
+  real dTempi;          /* target temperature for the canonical ensemble */
+  gmx_bool bMomFlip;    /* momentum flip after MDMC rejection            */
+  gmx_bool bPandeTest;  /* Pande test                                    */
+  double dMuMass;       /* mass for the Andersen barostat                */
+  double dAlphaPress;   /* external pressure for the Andersen barostat   */
 } t_inputrec;
 
 #define DEFORM(ir) ((ir).deform[XX][XX]!=0 || (ir).deform[YY][YY]!=0 || (ir).deform[ZZ][ZZ]!=0 || (ir).deform[YY][XX]!=0 || (ir).deform[ZZ][XX]!=0 || (ir).deform[ZZ][YY]!=0)
@@ -311,9 +312,9 @@ typedef struct {
 
 #define IR_EXCL_FORCES(ir) (EEL_FULL((ir).coulombtype) || (EEL_RF((ir).coulombtype) && (ir).coulombtype != eelRF_NEC) || (ir).implicit_solvent != eisNO)
 /* use pointer definitions of ir here, since that's what's usually used in the code */
-#define IR_NVT_TROTTER(ir) ((((ir)->eI == eiVV) || ((ir)->eI == eiVVAK)) && ((ir)->etc == etcNOSEHOOVER))
+#define IR_NVT_TROTTER(ir) ((((ir)->eI == eiVV) || ((ir)->eI == eiVVAK) || ((ir)->eI == eiVNI5) || ((ir)->eI == eiVNI7) || ((ir)->eI == eiVNI9)) && ((ir)->etc == etcNOSEHOOVER))
 
-#define IR_NPT_TROTTER(ir) ((((ir)->eI == eiVV) || ((ir)->eI == eiVVAK)) && ((ir)->epc == epcMTTK))
+#define IR_NPT_TROTTER(ir) ((((ir)->eI == eiVV) || ((ir)->eI == eiVVAK) || ((ir)->eI == eiVNI5) || ((ir)->eI == eiVNI7) || ((ir)->eI == eiVNI9)) && ((ir)->epc == epcMTTK))
 
 #ifdef __cplusplus
 }

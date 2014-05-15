@@ -230,7 +230,8 @@ static void do_update_vv_vel(int start,int nrend,double dt,
                              unsigned short ptype[],
                              unsigned short cFREEZE[],unsigned short cACC[],
                              t_state *state,rvec f[],double dMuMass,double dAlphaPress,
-                             gmx_bool bExtended,real alpha,gmx_enerdata_t *enerd)
+                             gmx_bool bExtended,real alpha,
+                             double dCoeff)
 {
     double imass,w_dt,muinv_dt;
     int gf=0,ga=0,gt=0;
@@ -255,9 +256,7 @@ static void do_update_vv_vel(int start,int nrend,double dt,
 
     /* Andersen Barostat */
     if (epc == epcANDERSEN)
-    {
-        V0 = cuberoot(state->q);
-    }
+       V0 = cuberoot(state->q);
 
     for(n=start; n<nrend; n++)
     {
@@ -276,11 +275,12 @@ static void do_update_vv_vel(int start,int nrend,double dt,
             if((ptype[n] != eptVSite) && (ptype[n] != eptShell) && !nFreeze[gf][d])
             {
                 if(epc != epcANDERSEN)
-                    state->v[n][d] = mv1*(mv1*state->v[n][d] + 0.5*(w_dt*mv2*f[n][d])) + 0.5*accel[ga][d]*dt;
+                    //state->v[n][d] = mv1*(mv1*state->v[n][d] + 0.5*(w_dt*mv2*f[n][d])) + 0.5*accel[ga][d]*dt;
+                    state->v[n][d] = mv1*(mv1*state->v[n][d] + dCoeff*(w_dt*mv2*f[n][d])) + 0.5*accel[ga][d]*dt; // PRUEBA
                 else
                 {
                     /* Andersen Barostat */
-                    state->v[n][d]     = state->v[n][d] + 0.5*(w_dt*f[n][d]);
+                    state->v[n][d] = state->v[n][d] + 0.5*(w_dt*f[n][d]);
                 }
             }
             else
@@ -297,7 +297,8 @@ static void do_update_vv_pos(int start,int nrend,double dt,
                              unsigned short ptype[],
                              unsigned short cFREEZE[],
                              t_state *state,rvec xprime[],rvec f[],
-                             double dMuMass,gmx_bool bExtended,real alpha)
+                             double dMuMass,gmx_bool bExtended,real alpha,
+                             double dCoeff)
 {
   double imass,w_dt;
   int gf=0;
@@ -339,11 +340,12 @@ static void do_update_vv_pos(int start,int nrend,double dt,
           if ((ptype[n] != eptVSite) && (ptype[n] != eptShell) && !nFreeze[gf][d])
           {
               if (epc != epcANDERSEN)
-                  xprime[n][d] = mr1*(mr1*state->x[n][d]+mr2*dt*state->v[n][d]);
+                  //xprime[n][d] = mr1*(mr1*state->x[n][d]+mr2*dt*state->v[n][d]);
+                  xprime[n][d] = mr1*(mr1*state->x[n][d]+mr2*dCoeff*dt*state->v[n][d]); // PRUEBA
               else
               {
                   /* Andersen Barostat */
-                  xprime[n][d]       = state->x[n][d] + dt*(sqr(L1)/sqr(L2))*state->v[n][d];
+                  xprime[n][d] = state->x[n][d] + dt*(sqr(L1)/sqr(L2))*state->v[n][d];
               }
           }
           else
@@ -1238,7 +1240,7 @@ void update_tcouple(FILE *fplog,
             break;
         }
         /* rescale in place here */
-        if (EI_VV(inputrec->eI))
+        if (EI_VV(inputrec->eI) || EI_VNI(inputrec->eI))
         {
             rescale_velocities(ekind,md,md->start,md->start+md->homenr,state->v);
         }
@@ -1356,7 +1358,7 @@ void update_constraints(FILE *fplog,
     rvec *vbuf,*xprime=NULL;
     
     if (constr) {bDoConstr=TRUE;}
-    if (bFirstHalf && !EI_VV(inputrec->eI)) {bDoConstr=FALSE;}
+    if (bFirstHalf && !EI_VV(inputrec->eI) && !EI_VNI(inputrec->eI)) {bDoConstr=FALSE;}
 
     /* for now, SD update is here -- though it really seems like it
 should be reformulated as a velocity verlet method, since it has two parts */
@@ -1391,7 +1393,7 @@ should be reformulated as a velocity verlet method, since it has two parts */
         bEner = (do_per_step(step,inputrec->nstenergy) || bLastStep);
         /* Constrain the coordinates xprime */
         wallcycle_start(wcycle,ewcCONSTR);
-        if (EI_VV(inputrec->eI) && bFirstHalf)
+        if ((EI_VV(inputrec->eI) || EI_VNI(inputrec->eI)) && bFirstHalf)
         {
             constrain(NULL,bLog,bEner,constr,idef,
                       inputrec,ekind,cr,step,1,md,
@@ -1521,7 +1523,7 @@ void update_box(FILE *fplog,
     real dt_1;
     int start,homenr,nrend,i,n,m,g;
     tensor vir_con;
-    double r; // MARIO
+    double r;
     
     start = md->start;
     homenr = md->homenr;
@@ -1589,10 +1591,10 @@ B_new*(vol_new)^(1/3), dB/dT_new = (veta_new)*B(new). */
             break;
         }
         break;
-    case (epcANDERSEN): // MARIO
+    case (epcANDERSEN):
         switch (inputrec->epct)
         {
-        case (epctISOTROPIC): // PRUEBA
+        case (epctISOTROPIC):
             r = state->q/det(state->box);
             r = cuberoot(r);
             msmul(state->box,r,state->box);
@@ -1641,8 +1643,10 @@ void update_coords(FILE *fplog,
                    t_nrnb *nrnb,
                    gmx_constr_t constr,
                    t_idef *idef,
-                   gmx_enerdata_t *enerd, // QUIZAS SOBRA
-                   tensor total_vir)
+                   gmx_enerdata_t *enerd,
+                   tensor total_vir,
+                   int *intSteps,
+                   double *intCoeffs)
 {
     gmx_bool bExtended,bNH,bPR,bTrotter,bLastStep,bLog=FALSE,bEner=FALSE;
     double dt,alpha;
@@ -1654,13 +1658,14 @@ void update_coords(FILE *fplog,
     int *icom = NULL;
     tensor vir_con;
     rvec *vcom,*xcom,*vall,*xall,*xin,*vin,*forcein,*fall,*xpall,*xprimein,*xprime;
-    real pressure; // MARIO
+    /* Used for VNI */
+    int coeffVel,coeffPos;
 
     /* Running the velocity half does nothing except for velocity verlet */
     if ((UpdatePart == etrtVELOCITY1 || UpdatePart == etrtVELOCITY2) &&
-        !EI_VV(inputrec->eI))
+        !EI_VV(inputrec->eI) && !EI_VNI(inputrec->eI))
     {
-        gmx_incons("update_coords called for velocity without VV integrator");
+        gmx_incons("update_coords called for velocity without VV integrator and without VNI integrators");
     }
 
     start = md->start;
@@ -1687,7 +1692,7 @@ void update_coords(FILE *fplog,
 
     bExtended = bNH || bPR;
     
-    if (bDoLR && inputrec->nstlist > 1 && !EI_VV(inputrec->eI)) /* get this working with VV? */
+    if (bDoLR && inputrec->nstlist > 1 && !EI_VV(inputrec->eI) && !EI_VNI(inputrec->eI)) /* get this working with VV? */
     {
         /* Store the total force + nstlist-1 times the LR force
 * in forces_lr, so it can be used in a normal update algorithm
@@ -1764,11 +1769,10 @@ void update_coords(FILE *fplog,
             if (inputrec->epc == epcANDERSEN)
             {
                 /* Velocity for the volume */
-                pressure = enerd->term[F_PRES];
+                double pressure = enerd->term[F_PRES];
                 double muinv_dt = dt/inputrec->dMuMass;
                 state->v_q += 0.5*muinv_dt*(pressure - inputrec->dAlphaPress) / PRESFAC; 
             }
-
             /* Velocities */
             do_update_vv_vel(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
@@ -1776,7 +1780,9 @@ void update_coords(FILE *fplog,
                              md->invmass,md->ptype,
                              md->cFREEZE,md->cACC,
                              state,force,inputrec->dMuMass,inputrec->dAlphaPress,
-                             bExtended,alpha,enerd); // MARIO HAY QUE QUITAR ENERD, YA NO HACE FALTA. A LO MEJOR TAMBIEN HAY QUE QUITARLO DE UPDATE_COORDS()
+                             bExtended,alpha,
+                             0.5); // PRUEBA
+            *intSteps += 1; // PRUEBA
             break;
         case etrtVELOCITY2:
             if (inputrec->epc != epcANDERSEN)
@@ -1786,7 +1792,8 @@ void update_coords(FILE *fplog,
                                  md->invmass,md->ptype,
                                  md->cFREEZE,md->cACC,
                                  state,force,inputrec->dMuMass,inputrec->dAlphaPress,
-                                 bExtended,alpha,enerd);
+                                 bExtended,alpha,
+                                 0.5);
             else
             {
                 /* Velocities */
@@ -1796,27 +1803,68 @@ void update_coords(FILE *fplog,
                                  md->invmass,md->ptype,
                                  md->cFREEZE,md->cACC,
                                  state,force,inputrec->dMuMass,inputrec->dAlphaPress,
-                                 bExtended,alpha,enerd);
-
-                /* Pressure */
+                                 bExtended,alpha,
+                                 0.5);
             }
             break;
         case etrtPOSITION:
             if (inputrec->epc == epcANDERSEN)
             {
                 /* Velocity for the volume */
-                pressure = enerd->term[F_PRES];
+                double pressure = enerd->term[F_PRES];
                 double muinv_dt = dt/inputrec->dMuMass;
                 state->v_q += 0.5*muinv_dt*(pressure - inputrec->dAlphaPress) / PRESFAC;
             }
+            /* Positions */
             do_update_vv_pos(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
                              md->invmass,md->ptype,md->cFREEZE,
                              state,xprime,force,inputrec->dMuMass,
-                             bExtended,alpha);
-
-//            printf("pressure = %f, volumen = %f y velocidad = %f\n",pressure,state->q,state->v_q); // MARIO
+                             bExtended,alpha,
+                             1.0);
+            break;
+        }
+        break;
+    case (eiVNI5):
+    case (eiVNI7):
+    case (eiVNI9):
+        switch (UpdatePart) {
+        case etrtVELOCITY1:
+            coeffVel = 2.0*(*intSteps) + 2.0; 
+            /* Velocities */
+            do_update_vv_vel(start,nrend,dt,
+                             ekind->tcstat,ekind->grpstat,
+                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+                             md->invmass,md->ptype,
+                             md->cFREEZE,md->cACC,
+                             state,force,inputrec->dMuMass,inputrec->dAlphaPress,
+                             bExtended,alpha,
+                             intCoeffs[coeffVel]); // PRUEBA
+            *intSteps += 1;
+            break;
+        case etrtVELOCITY2:
+            if (intSteps == 0)
+                /* Velocities */
+                do_update_vv_vel(start,nrend,dt,
+                                 ekind->tcstat,ekind->grpstat,
+                                 inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+                                 md->invmass,md->ptype,
+                                 md->cFREEZE,md->cACC,
+                                 state,force,inputrec->dMuMass,inputrec->dAlphaPress,
+                                 bExtended,alpha,
+                                 intCoeffs[0]); // PRUEBA
+            break;
+        case etrtPOSITION:
+            coeffPos = 2.0*(*intSteps) + 1.0;
+            /* Positions */
+            do_update_vv_pos(start,nrend,dt,
+                             ekind->tcstat,ekind->grpstat,
+                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+                             md->invmass,md->ptype,md->cFREEZE,
+                             state,xprime,force,inputrec->dMuMass,
+                             bExtended,alpha,
+                             intCoeffs[coeffPos]);
             break;
         }
         break;

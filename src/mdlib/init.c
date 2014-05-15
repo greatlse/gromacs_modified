@@ -81,14 +81,14 @@ void set_state_entries(t_state *state,const t_inputrec *ir,int nnodes)
   state->flags |= (1<<estX);
   if (state->x == NULL)
     snew(state->x,state->nalloc);
-  if (state->q != state->vol0)
+  if (state->q != state->vol0) // Andersen
     state->q = state->vol0;
   if (EI_DYNAMICS(ir->eI))
   {
     state->flags |= (1<<estV);
     if (state->v == NULL)
       snew(state->v,state->nalloc);
-    if (state->v_q != 0)
+    if (state->v_q != 0) // Andersen
       state->v_q = 0;
   }
   if (ir->eI == eiSD2) {

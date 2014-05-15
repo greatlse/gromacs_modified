@@ -130,7 +130,7 @@ static void check_nst(const char *desc_nst,int nst,
 
 static gmx_bool ir_NVE(const t_inputrec *ir)
 {
-    return ((ir->eI == eiMD || EI_VV(ir->eI)) && ir->etc == etcNO);
+    return ((ir->eI == eiMD || EI_VV(ir->eI) || EI_VNI(ir->eI)) && ir->etc == etcNO);
 }
 
 static int lcd(int n1,int n2)
@@ -189,7 +189,7 @@ void check_ir(const char *mdparin,t_inputrec *ir, t_gromppopts *opts,
   }
 
     /* GENERAL INTEGRATOR STUFF */
-    if (!(ir->eI == eiMD || EI_VV(ir->eI)))
+    if (!(ir->eI == eiMD || EI_VV(ir->eI) || EI_VNI(ir->eI)))
     {
         ir->etc = etcNO;
     }
@@ -376,7 +376,7 @@ void check_ir(const char *mdparin,t_inputrec *ir, t_gromppopts *opts,
             warning(wi,warn_buf);
         }
         
-        if (ir->etc==etcNOSEHOOVER && !EI_VV(ir->eI) && ir->opts.nhchainlength > 1)
+        if (ir->etc==etcNOSEHOOVER && !EI_VV(ir->eI) && !EI_VNI(ir->eI) && ir->opts.nhchainlength > 1)
         {
             warning_note(wi,"leapfrog does not yet support Nose-Hoover chains, nhchainlength reset to 1");
             ir->opts.nhchainlength = 1;
@@ -441,7 +441,7 @@ void check_ir(const char *mdparin,t_inputrec *ir, t_gromppopts *opts,
         warning(wi,warn_buf);
     }
     
-    if (EI_VV(ir->eI))
+    if (EI_VV(ir->eI) || EI_VNI(ir->eI))
     {
         if (ir->epc > epcNO)
         {
@@ -692,7 +692,8 @@ void check_ir(const char *mdparin,t_inputrec *ir, t_gromppopts *opts,
   }
 
   /* GSHMC STUFF */
-  if (ir->bGSHMC == TRUE)
+  //if (ir->bGSHMC == TRUE)
+  if (ir->met == metGSHMC) // PRUEBA
   {
      sprintf(err_buf, "GSHMC: parameter phi must be between 0 and PI/2\n");
      CHECK(ir->dPhi > M_PI_2 || ir->dPhi < 0.0);
@@ -1176,7 +1177,8 @@ void get_ir(const char *mdparin,const char *mdparout,
 
   /* GSHMC */
   CCTYPE ("Generalized Shadow Hybrid Monte Carlo");
-  EETYPE("GSHMC",                 ir->bGSHMC,     yesno_names);
+  //EETYPE("GSHMC",                 ir->bGSHMC,     yesno_names);
+  EETYPE("method",                ir->met,        method_names);
   RTYPE ("parameter_phi",         ir->dPhi,       0);
   ITYPE ("nr_mom_updates",        ir->iMomUpd,    1);
   EETYPE("variable_change",       ir->bVarChange, yesno_names);
@@ -1893,7 +1895,7 @@ void do_index(const char* mdparin, const char *ndx,
       {
             ir->nsttcouple = ir_optimal_nsttcouple(ir);
       }
-      if (EI_VV(ir->eI)) 
+      if (EI_VV(ir->eI) || EI_VNI(ir->eI)) 
       {
           if ((ir->epc==epcMTTK) && (ir->etc>etcNO))
           {

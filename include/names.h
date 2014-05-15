@@ -86,6 +86,7 @@ extern const char *eQMmethod_names[eQMmethodNR+1];
 extern const char *eQMbasis_names[eQMbasisNR+1];
 extern const char *eQMMMscheme_names[eQMMMschemeNR+1];
 extern const char *eMultentOpt_names[eMultentOptNR+1];
+extern const char *method_names[metNR+1];
 
 #define	UNDEFINED		"UNDEFINED"
 #define ENUM_NAME(e,max,names)	((((e)<0)||((e)>=(max)))?UNDEFINED:(names)[e])
@@ -125,6 +126,7 @@ extern const char *eMultentOpt_names[eMultentOptNR+1];
 #define EQMBASIS(e)    ENUM_NAME(e,eQMbasisNR,eQMbasis_names)
 #define EQMMMSCHEME(e) ENUM_NAME(e,eQMMMschemeNR,eQMMMscheme_names)
 #define EMULTENTOPT(e) ENUM_NAME(e,eMultentOptNR,eMultentOpt_names)
+#define METHODTYPE(e) ENUM_NAME(e,metNR,method_names)
 
 #ifdef __cplusplus
 }

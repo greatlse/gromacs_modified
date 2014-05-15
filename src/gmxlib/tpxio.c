@@ -918,7 +918,8 @@ static void do_inputrec(t_fileio *fio, t_inputrec *ir,gmx_bool bRead,
     /* GSHMC */
     if (file_version >= 74)
     {
-       gmx_fio_do_gmx_bool(fio, ir->bGSHMC);  // flag for using GSHMC or not
+       //gmx_fio_do_gmx_bool(fio, ir->bGSHMC);  // flag for using GSHMC or not
+       gmx_fio_do_int(fio, ir->met);
        gmx_fio_do_real(fio, ir->dPhi);     // parameter for partial momentum update in GSHMC
        gmx_fio_do_int(fio, ir->iMomUpd);   // number of momemtum update trials in GSHMC
        gmx_fio_do_gmx_bool(fio, ir->bVarChange);  // variable change at mom. update or not

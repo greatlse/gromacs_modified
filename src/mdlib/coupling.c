@@ -577,7 +577,7 @@ void berendsen_tcoupl(t_inputrec *ir,gmx_ekindata_t *ekind,real dt)
 
     for(i=0; (i<opts->ngtc); i++)
     {
-        if (ir->eI == eiVV)
+        if (ir->eI == eiVV || EI_VNI(ir->eI))
         {
             T = ekind->tcstat[i].T;
         }
@@ -719,7 +719,7 @@ actually corresponds to the n-1 step*/
         case etrtNHC:
         case etrtNHC2:
             NHC_trotter(opts,opts->ngtc,ekind,dt,state->nosehoover_xi,
-                        state->nosehoover_vxi,scalefac,NULL,MassQ,(ir->eI==eiVV));
+                        state->nosehoover_vxi,scalefac,NULL,MassQ,(ir->eI==eiVV|| EI_VNI(ir->eI)));
             /* need to rescale the kinetic energies and velocities here. Could
 scale the velocities later, but we need them scaled in order to
 produce the correct outputs, so we'll scale them here. */
@@ -805,7 +805,7 @@ int **init_npt_vars(t_inputrec *ir, t_state *state, t_extmass *MassQ, gmx_bool b
             }
         }
     }
-    else if (EI_VV(ir->eI))
+    else if (EI_VV(ir->eI) || EI_VNI(ir->eI))
     {
     /* Set pressure variables */
         
@@ -886,7 +886,7 @@ we need the volume at this compressibility to solve the problem */
     /* compute the kinetic energy by using the half step velocities or
 * the kinetic energies, depending on the order of the trotter calls */
 
-    if (ir->eI==eiVV)
+    if (ir->eI==eiVV || EI_VNI(ir->eI))
     {
         if (IR_NPT_TROTTER(ir))
         {
@@ -1216,7 +1216,7 @@ void vrescale_tcoupl(t_inputrec *ir,gmx_ekindata_t *ekind,real dt,
 
     for(i=0; (i<opts->ngtc); i++)
     {
-        if (ir->eI == eiVV)
+        if (ir->eI == eiVV || EI_VNI(ir->eI))
         {
             Ek = trace(ekind->tcstat[i].ekinf);
         }
