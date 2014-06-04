@@ -2,9 +2,7 @@ enum GSHMC_part {NONE, MDMC, PMMC};
 enum leap {back3, back2, back1, curre, forw1, forw2, forw3};
 enum test {REJECTED, ACCEPTED};
 
-/*int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *befor[7], t_state *after[7], double dDeltaXi,
-               real Uold, real Unew, gmx_rng_t rng, int iTest, real Etot, int iTrial, double *weight,
-               gmx_large_int_t step);*/
+/* Function for performing Metropolis test */
 int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *befor[7], t_state *after[7], double dDeltaXi,
                real Uold, real Unew, gmx_rng_t rng, int iTest, real Etotold, real Etotnew, int iTrial, double *weight,
                gmx_large_int_t step, gmx_bool *bFlip);
@@ -42,4 +40,3 @@ void momentum_generate(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdato
                      gmx_rng_t rng);
 
 void backup_state(t_state *state_a, t_state *state_b, rvec **f_a, rvec **f_b);
-

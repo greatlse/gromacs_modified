@@ -77,9 +77,11 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7
      else
      {
         /* Calculate hamiltonian for candidate position and momentum */
-        dHamCand = hamiltonian(mtop, ir, candidate, Ucandidate);
+        //dHamCand = hamiltonian(mtop, ir, candidate, Ucandidate); // PRUEBA
+        dHamCand = Etotcandidate;
         /* Calculate hamiltonian for current position and momentum */
-        dHamCurr = hamiltonian(mtop, ir, current, Ucurrent);
+        //dHamCurr = hamiltonian(mtop, ir, current, Ucurrent); // PRUEBA
+        dHamCurr = Etotcurrent;
      }
   }
   else
@@ -266,7 +268,7 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7
 /* Function for calculating hamiltonians in GHMC */
 double hamiltonian(gmx_mtop_t *mtop, t_inputrec *ir, t_state *state[7], real Upot)
 {
-  rvec *Q[6][4];   // Interpolation polynomials for calculating shadow hamiltonians
+  rvec *Q[6][4];   // Interpolation polynomials for calculating hamiltonians
   real term11 = 0.0;
   real dHamiltonian = 0.0;
   real dt2 = ir->delta_t * ir-> delta_t; // integration timestep. we apply it here instead of in Q
@@ -639,7 +641,7 @@ void momentum_update(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms
 
 
   /* variable change to increase acceptance rate */
-  if (ir->bVarChange) // do variable change
+  if (ir->bVarChange && ir->met == metGSHMC) // do variable change
      for (n = start; n < nrend; n++)
         if (massT[n] > 0)
            for (d=0; d<DIM; d++) 
@@ -675,7 +677,7 @@ void momentum_update(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms
 
 
   /* variable change to increase acceptance rate */
-  if (ir->bVarChange) // undo variable change
+  if (ir->bVarChange && ir->met == metGSHMC) // undo variable change
      for (n = start; n < nrend; n++)
         if (massT[n] > 0)
            for (d=0; d<DIM; d++) 

@@ -1236,11 +1236,11 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
        /* Pande test */
        gmx_bool bFlip = FALSE;
        /* New integrators VNI */
+       int    n = 0;
        int    intSteps = 0;
-       int    limitSteps = 0;
-       double intCoeffs[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+       double intCoeffs[9] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
        double da1 = 0.0, da2 = 0.0, db1 = 0.0, db2 = 0.0, db3 = 0.0;
- 
+
        /* with domain decomposition, energy must be calculated at every step 
           of the interpolation */
        int bck_nstcalcenergy = ir->nstcalcenergy;
@@ -1271,34 +1271,35 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     /* Define the values used for the integrators (VV or VNI) */
     if (bVV || bVNI)
     {
-        int x;
         if (ir->eI==eiVV || ir->eI==eiVVAK)
         {
-            limitSteps = 1;
+            n = 1;
             intCoeffs[0] = 0.5, intCoeffs[1] = 1.0;
         }
         if (ir->eI==eiVNI5)
         {
-            limitSteps = 2;
-            // [b1, a1, b2, a1,  0,  0,  0,  0]
+            n = 2; 
+            // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
             da1 = 0.5, db1 = (3.0 - sqrt(3.0))/6.0, db2 = 0.5 - db1;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
-            intCoeffs[2] = db2, intCoeffs[3] = da1;
+            intCoeffs[2] = db2*0.5;
+            intCoeffs[3] = da1, intCoeffs[4] = db1;
         }
         if (ir->eI==eiVNI7)
         {
-            limitSteps = 3;
-            // [b1, a1, b2, a2, b2, a1,  0,  0]
+            n = 3;
+            // [b1, a1, b2, a2, b2, a1, b1,  0,  0]
             da1 = 0.11888010966548, da2 = 0.5 - da1;
             db1 = 0.29619504261126, db2 = 1.0 - 2.0*db1;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
             intCoeffs[2] = db2, intCoeffs[3] = da2;
             intCoeffs[4] = db2, intCoeffs[5] = da1;
+            intCoeffs[6] = db1;
         }
         if (ir->eI==eiVNI9)
         {
-            limitSteps = 4;
-            // [b1, a1, b2, a2, b3, a2, b2, a1]
+            n = 4;
+            // [b1, a1, b2, a2, b3, a2, b2, a1, b1]
             da1 = 0.071353913450279725904;
             da2 = 0.268548791161230105820, db3 = 1.0 - 2.0*da1 - 2.0*da2;
             db1 = 0.191667800000000000000, db2 = 0.5 - db1;
@@ -1306,6 +1307,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             intCoeffs[2] = db2, intCoeffs[3] = da2;
             intCoeffs[4] = db3, intCoeffs[5] = da2;
             intCoeffs[6] = db2, intCoeffs[7] = da1;
+            intCoeffs[8] = db1;
         }
     }
 
@@ -1468,8 +1470,6 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     }
 
        /* ########  GSHMC: Generalized Shadow Hybrid Monte Carlo  ###### */
-       //if (ir->bGSHMC)
-       //if (ir->met != NULL) // PRUEBA
        if (ir->met == metHMC || ir->met == metGHMC || ir->met == metGSHMC)
        {
           /* initialize variables for saving and restoring the state */
@@ -1828,7 +1828,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
         else 
         {
             bLastStep = (step_rel == ir->nsteps);
-            t = t0 + step*ir->delta_t;
+            t = t0 + (step/n)*ir->delta_t; // PRUEBA
         }
 
         if (ir->efep != efepNO)
@@ -1934,14 +1934,14 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             bNStList = (ir->nstlist > 0  && step % ir->nstlist == 0);
 
         /* GSHMC */
-        if ( (GHMC_part == MDMC && stepMD%ir->iL <= forw3) || GHMC_part == PMMC ) 
+        if (((GHMC_part == MDMC && stepMD%ir->iL <= forw3) || GHMC_part == PMMC) && ir->met == metGSHMC) 
         {
             // avoid neighbour update during the 7 steps of the interpolation 
             bNStList = FALSE;
             // force global communication during the 7 steps of the interpolation,
             // otherwise the shadow hamiltonians lose precision 
             ir->nstcalcenergy = 1;
-}
+        }
         /* GSHMC */
             
             bNS = (bFirstStep || bExchanged || bNStList ||
@@ -2352,43 +2352,12 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
 
 
         /* ###########  GSHMC: Generalized Shadow Hybrid Monte Carlo  ######### */
-        //if (ir->bGSHMC && step_rel != 0) {
-        if (step_rel == 0)
-           intSteps = 0;
-        if ((ir->met == metHMC || ir->met == metGHMC || ir->met == metGSHMC) && step_rel != 0 && intSteps == limitSteps) {
-        intSteps = 0;
-                 /* *** PART 1: Molecular Dynamics Monte Carlo *** */
-        /* when we are completing the MD part of GSHMC, save the positions 
-           at t-3, t-2, t-1, t, t+1, t+2, t+3 for interpolation polynomial */
-        if (GHMC_part == MDMC)
+        if (ir->met == metGSHMC && step_rel != 0)
         {
-           /* first 7 timesteps, fill in beforMD */
-           if (stepMD <= forw3)
-           {
-              if (DOMAINDECOMP(cr))
-                 dd_collect_state(cr->dd,state,state_global);
-              else if (cr->nnodes > 1) // Particle decomposition, collect the data on the master node
-                 move_rvecs(cr,FALSE,FALSE,GMX_LEFT,GMX_RIGHT, state_global->x, NULL, (cr->nnodes-cr->npmenodes)-1,NULL);
-
-              backup_state(state, s_beforMD[stepMD], &f, &f_beforMD[stepMD]);
-              if (MASTER(cr))
-              {
-                 backup_state(state_global, g_beforMD[stepMD], NULL, NULL);
-                 if (stepMD == curre)
-                 {
-                    u_beforMD = enerd->term[F_EPOT];
-                    /* Andersen barostat */
-                    k_beforMD = enerd->term[F_EKIN];
-                    Etot_beforMD = u_beforMD + k_beforMD;
-                    if (ir->epc == epcANDERSEN)
-                       Etot_beforMD += 0.5*(ir->dMuMass)*(sqr(state->v_q)) + (state->q)*(ir->dAlphaPress);
-                    /* Andersen barostat */
-                 }
-              }
-           }
-
-           /* second time through, fill in afterMD */
-           else 
+                 /* *** PART 1: Molecular Dynamics Monte Carlo *** */
+           /* when we are completing the MD part of GSHMC, save the positions 
+           at t-3, t-2, t-1, t, t+1, t+2, t+3 for interpolation polynomial */
+           if (GHMC_part == MDMC)
            {
               i = stepMD % ir->iL;
 
@@ -2398,7 +2367,31 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                     dd_collect_state(cr->dd,state,state_global);
                  else if (cr->nnodes > 1) // Particle decomposition, collect the data on the master node
                     move_rvecs(cr,FALSE,FALSE,GMX_LEFT,GMX_RIGHT, state_global->x, NULL, (cr->nnodes-cr->npmenodes)-1,NULL);
+              }
 
+              /* first 7 timesteps, fill in beforMD */
+              if (stepMD <= forw3)
+              {
+                 backup_state(state, s_beforMD[stepMD], &f, &f_beforMD[stepMD]);
+                 if (MASTER(cr))
+                 {
+                    backup_state(state_global, g_beforMD[stepMD], NULL, NULL);
+                    if (stepMD == curre)
+                    {
+                       u_beforMD = enerd->term[F_EPOT];
+                       /* Andersen barostat */
+                       k_beforMD = enerd->term[F_EKIN];
+                       Etot_beforMD = u_beforMD + k_beforMD;
+                       if (ir->epc == epcANDERSEN)
+                          Etot_beforMD += 0.5*(ir->dMuMass)*(sqr(state->v_q)) + (state->q)*(ir->dAlphaPress);
+                       /* Andersen barostat */
+                    }
+                 }
+              }
+
+              /* second time through, fill in afterMD */
+              else if (i <= forw3)
+              {
                  backup_state(state, s_afterMD[i], &f, &f_afterMD[i]);
                  if (MASTER(cr))
                  {
@@ -2409,313 +2402,412 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                        /* Andersen barostat */
                        k_afterMD = enerd->term[F_EKIN];
                        Etot_afterMD = u_afterMD + k_afterMD;
-
                        if (ir->epc == epcANDERSEN)
                           Etot_afterMD += 0.5*(ir->dMuMass)*(sqr(state->v_q)) + (state->q)*(ir->dAlphaPress);
                        /* Andersen barostat */
                     }
                  }
-              }
 
-              if (i == forw3)
-              {
-                 /* We perform a test, either Metropolis or Pande */
-                 if (MASTER(cr))
-                    iMetro = metropolis(fplog, top_global, ir, g_beforMD, g_afterMD, 0.0,  
-                                       u_beforMD, u_afterMD, rng, MDMC, Etot_beforMD, Etot_afterMD, iTrial, &weight, step, &bFlip);
-                 if (PAR(cr))
-                    gmx_bcast(sizeof(int), &iMetro, cr);
-
-                 /* if test is REJECTED, recover state beforMD, flip the momentum (if it is necessary) and go on to PMMC  */
-                 if (iMetro == REJECTED)
+                 if (i == forw3)
                  {
-                    /* Momentum FLip */
-                    if ((ir->bPandeTest && bFlip == TRUE) || (!(ir->bPandeTest) && ir->bMomFlip))
+                    /* We perform a test, either Metropolis or Metropolis with reduced flipping (Pande) */
+                    if (MASTER(cr))
+                       iMetro = metropolis(fplog, top_global, ir, g_beforMD, g_afterMD, 0.0,  
+                                           u_beforMD, u_afterMD, rng, MDMC, Etot_beforMD, Etot_afterMD, iTrial, &weight, step, &bFlip);
+                    if (PAR(cr))
+                       gmx_bcast(sizeof(int), &iMetro, cr);
+
+                    /* if test is REJECTED, recover state beforMD, flip the momentum (if it is necessary) and go on to PMMC  */
+                    if (iMetro == REJECTED)
                     {
-                       for (i=back3; i<=forw3; i++)
+                       /* Momentum FLip */
+                       if ((ir->bPandeTest && bFlip == TRUE) || (!(ir->bPandeTest) && ir->bMomFlip))
                        {
-                          momentum_flip(s_beforMD[i]->natoms, s_beforMD[i]->v);
-                          s_beforMD[i]->v_q *= -1; /* Andersen barostat */
-                          if (MASTER(cr))
-                             g_beforMD[i]->v_q *= -1; /* Andersen barostat */
-                       }
+                          for (i=back3; i<=forw3; i++)
+                          {
+                             momentum_flip(s_beforMD[i]->natoms, s_beforMD[i]->v);
+                             if (ir->epc == epcANDERSEN)
+                             {
+                                s_beforMD[i]->v_q *= -1; /* Andersen barostat */
+                                if (MASTER(cr))
+                                   g_beforMD[i]->v_q *= -1; /* Andersen barostat */
+                             }
+                          }
    
-                       for (i=back3, j=forw3; i<=forw3; i++, j--)
-                       {
-                          backup_state(s_beforMD[i], s_afterMD[j], &f_beforMD[i], &f_afterMD[j]);
-                          if (MASTER(cr))
-                             backup_state(g_beforMD[i], g_afterMD[j], NULL, NULL);
+                          for (i=back3, j=forw3; i<=forw3; i++, j--)
+                          {
+                             backup_state(s_beforMD[i], s_afterMD[j], &f_beforMD[i], &f_afterMD[j]);
+                             if (MASTER(cr))
+                                backup_state(g_beforMD[i], g_afterMD[j], NULL, NULL);
+                          }
                        }
+                       /* without momentum flip */
+                       else
+                       {
+                          for (i=back3; i<=forw3; i++)
+                          {
+                             backup_state(s_beforMD[i], s_afterMD[i], &f_beforMD[i], &f_afterMD[i]);
+                             if (MASTER(cr))
+                                backup_state(g_beforMD[i], g_afterMD[i], NULL, NULL);
+                          }
+                       }
+
+                       /* either way, restore the state at the center of the interpolation beforMD */
+                       backup_state(s_beforMD[curre], state, &f_beforMD[curre], &f);
+                       if (MASTER(cr))
+                          backup_state(g_beforMD[curre], state_global, NULL, NULL);
+   
+                       /* Re-adjust the stepMD counter */
+// PRUEBA                                    if (stepMD > ir->iL)
+// PRUEBA                                       stepMD -= ir->iL;
+// PRUEBA                                    else
+// PRUEBA                                       stepMD = forw3;
+// PRUEBA no rewinding                       if (step > ir->iL)
+// PRUEBA no rewinding                          step -= ir->iL;
+// PRUEBA no rewinding                       else
+// PRUEBA no rewinding                          step = forw3;
+
+                       bDoForce = TRUE;
                     }
-                    /* without momentum flip */
+                    /* if test is ACCEPTED, recover the state at the center
+                       of the interpolation polynomial and go on to PMMC */ 
                     else
                     {
-                       for (i=back3; i<=forw3; i++)
+                       backup_state(s_afterMD[curre], state, &f_afterMD[curre], &f);
+                       if (MASTER(cr))
                        {
-                          backup_state(s_beforMD[i], s_afterMD[i], &f_beforMD[i], &f_afterMD[i]);
-                          if (MASTER(cr))
-                             backup_state(g_beforMD[i], g_afterMD[i], NULL, NULL);
+                          backup_state(g_afterMD[curre], state_global, NULL, NULL);
+                          /* the pot. energy at the center of the interpolation will not change in PMMC */
+                          u_beforMD = u_afterMD;
+                          k_beforMD = k_afterMD;
+                          Etot_beforMD = u_beforMD + k_beforMD;
+                          /* Andersen barostat */
+                          if (ir->epc == epcANDERSEN)
+                             Etot_beforMD += 0.5*(ir->dMuMass)*(sqr(state->v_q)) + (state->q)*(ir->dAlphaPress);
+                          /* Andersen barostat */
                        }
                     }
 
-                    /* either way, restore the state at the center of the interpolation beforMD */
+                    /* prepare for part 2: PMMC */
+                    bck_step = step; // save the step number. PMMC does not advance time.
+                    bOutput=TRUE; // always write output after MDMC (no rewinding)
+
+                    GHMC_part = PMMC; 
+                    stepPM = curre;
+                    iTrial = 1;
+                 } //  end of if (stepMD % ir->iL == forw3)
+              } // end of afterMD interpolation
+              stepMD++; // advance the MDMC counter
+           } // end of GSHMC: PART 1. MDMC
+
+reload: // goto point for momentum update retrials
+           if (bDoForce)
+           {
+              if (DOMAINDECOMP(cr))
+                 dd_partition_system(fplog,step,cr,
+                                     TRUE,1,
+                                     state_global,top_global,ir,
+                                     state,&f,mdatoms,top,fr,
+                                     vsite,shellfc,constr,
+                                     nrnb,wcycle,do_verbose);
+
+              do_force(fplog,cr,ir,step,nrnb,wcycle,top,top_global,groups,
+                       state->box,state->x,&state->hist,
+                       f,force_vir,mdatoms,enerd,fcd,
+                       state->lambda,graph,
+                       fr,vsite,mu_tot,t,outf->fp_field,ed,bBornRadii,
+                       GMX_FORCE_NS | force_flags);
+              bDoForce = FALSE;
+           }
+
+           /* *** PART 2: Partial Momentum update Monte Carlo *** */
+           if (GHMC_part == PMMC) 
+           {
+              if (DOMAINDECOMP(cr))
+                 dd_collect_state(cr->dd,state,state_global);
+              else if (cr->nnodes > 1) // Particle decomposition, collect the data on the master node
+                 move_rvecs(cr,FALSE,FALSE,GMX_LEFT,GMX_RIGHT, state_global->x, NULL, (cr->nnodes-cr->npmenodes)-1,NULL);
+
+              switch (stepPM)
+              {
+                 case curre:
+                    /* momentum update, includes optional variable change to increase acceptance rate */
+                    momentum_update(fplog, constr, ir, mdatoms, state, f, graph, cr, nrnb, fr, top, 
+                                    shake_vir, rng, &dDeltaXi, f_afterMD[forw1], f_afterMD[back1]);
+               
+                    backup_state(state, s_beforMD[curre], &f, &f_beforMD[curre]); 
+
+                    // here you should collect the velocities
+                    if (DOMAINDECOMP(cr))
+                       dd_collect_vec(cr->dd, state, state->v, state_global->v);
+
+                    if (MASTER(cr))
+                       backup_state(state_global, g_beforMD[curre], NULL, NULL);
+
+                    /* integrate three steps backwards and three forward to fill in 
+                    the positions buffer for calculating interpolation polynomial */
+                    stepPM = back1;
+                    /* reverse velocity to integrate backwards in time */
+                    momentum_flip(state->natoms, state->v);
+                    if (ir->epc == epcANDERSEN)
+                       state->v_q *= -1.0; /* Andersen barostat */
+                    break;
+                 
+                 case back1:
+                    backup_state(state, s_beforMD[back1], &f, &f_beforMD[back1]); 
+                    if (MASTER(cr))
+                       backup_state(state_global, g_beforMD[back1], NULL, NULL);
+                    stepPM = back2;
+                    break;
+
+                 case back2:
+                    backup_state(state, s_beforMD[back2], &f, &f_beforMD[back2]); 
+                    if (MASTER(cr))
+                       backup_state(state_global, g_beforMD[back2], NULL, NULL);
+                    stepPM = back3;
+                    break;
+
+                 case back3:
+                    backup_state(state, s_beforMD[back3], &f, &f_beforMD[back3]); 
+                    if (MASTER(cr))
+                       backup_state(state_global, g_beforMD[back3], NULL, NULL);
+                    stepPM = forw1;
+                    /* recover the state at the current timestep with the updated momentum */
                     backup_state(s_beforMD[curre], state, &f_beforMD[curre], &f);
                     if (MASTER(cr))
                        backup_state(g_beforMD[curre], state_global, NULL, NULL);
+                    break;
    
-                    /* Re-adjust the stepMD counter */
-                    if (stepMD > ir->iL)
-                       stepMD -= ir->iL;
-                    else
-                       stepMD = forw3;
-                    if (step > ir->iL)
-                       step -= ir->iL;
-                    else
-                       step = forw3;
+                 case forw1:
+                    backup_state(state, s_beforMD[forw1], &f, &f_beforMD[forw1]); 
+                    if (MASTER(cr))
+                       backup_state(state_global, g_beforMD[forw1], NULL, NULL);
+                    stepPM = forw2;
+                    break;
 
-                    bDoForce = TRUE;
-                 }
-                 /* if test is ACCEPTED, recover the state at the center of the 
-                    interpolation polynomial and go on to PMMC */ 
-                 else
-                 {
-                    backup_state(s_afterMD[curre], state, &f_afterMD[curre], &f);
+                 case forw2:
+                    backup_state(state, s_beforMD[forw2], &f, &f_beforMD[forw2]); 
+                    if (MASTER(cr))
+                       backup_state(state_global, g_beforMD[forw2], NULL, NULL);
+                    stepPM = forw3;
+                    break;
+
+                 case forw3:
+                    backup_state(state, s_beforMD[forw3], &f, &f_beforMD[forw3]);
+                    if (MASTER(cr))
+                       backup_state(state_global, g_beforMD[forw3], NULL, NULL);
+
+                    /* Perform Metropolis test for the updated momentum */
                     if (MASTER(cr))
                     {
-                       backup_state(g_afterMD[curre], state_global, NULL, NULL);
-                       /* the pot. energy at the center of the interpolation will not change in PMMC */
-                       u_beforMD = u_afterMD;
-                       k_beforMD = k_afterMD;
+                       if (debug)
+                       {
+                          fprintf(fplog, "PMMC step is: forward +3 \n"); 
+                          fprintf(stderr, "PMMC step is: forward +3 \n"); 
+                       }
+                       iMetro = metropolis(fplog, top_global, ir, g_afterMD, g_beforMD, dDeltaXi,  
+                                           u_beforMD, u_beforMD, rng, PMMC, Etot_beforMD, Etot_beforMD, iTrial, &weight, step, &bFlip); 
+                    }
+                    if (PAR(cr))
+                       gmx_bcast(sizeof(int), &iMetro, cr);
+
+                    if (iMetro == REJECTED && iTrial < ir->iMomUpd)
+                    {
+                       /* recover original velocity and update again */
+                       backup_state(s_afterMD[curre], state, &f_afterMD[curre], &f); 
+                       if (MASTER(cr))
+                          backup_state(g_afterMD[curre], state_global, NULL, NULL);
+
+                       // here this is necessary for re-updating the constr
+                       bDoForce = TRUE;
+
+                       iTrial++;
+                       stepPM = curre;
+                       goto reload;
+                    }
+                    else if (iMetro == REJECTED && iTrial == ir->iMomUpd)
+                    {
+                       /* if no momentum updates were accepted, restore the state afterMD 
+                          and continue integrating from forw3 */
+                       backup_state(s_afterMD[forw3], state, &f_afterMD[forw3], &f);
+                       if (MASTER(cr))
+                          backup_state(g_afterMD[forw3], state_global, NULL, NULL);
+
+                       for (i=back3; i<=forw3; i++)
+                       {
+                          backup_state(s_afterMD[i], s_beforMD[i], &f_afterMD[i], &f_beforMD[i]);
+                          if (MASTER(cr))
+                             backup_state(g_afterMD[i], g_beforMD[i], NULL, NULL);
+                       }
+
+                       // here this is necessary for re-updating the constr
+                       bDoForce = TRUE;
+                       GHMC_part = MDMC;
+                       ir->nstcalcenergy = bck_nstcalcenergy;
+                       step = bck_step; 
+                       goto reload;
+                    }
+                    else //: ACCEPTED. The state beforMD is already filled in, so we continue integrating from 'forw3'
+                    {
+                       GHMC_part = MDMC;
+                       ir->nstcalcenergy = bck_nstcalcenergy;
+                       step = bck_step; 
+                    }
+                    break;
+              } // end of switch(stepPM)
+           } // end of GSHMC: PART 2. PMMC
+        } // end of if (ir->bGSHMC)
+        /* #####################       END OF GSHMC        #################### */
+        /* ###########  GHMC: Generalized Hybrid Monte Carlo and HMC: Hybrid Monte Carlo  ######### */
+        else if ((ir->met == metHMC || ir->met == metGHMC) && step_rel != 0)
+        {
+           /* *** PART 1: Molecular Dynamics Monte Carlo *** */
+           if (GHMC_part == MDMC)
+           {
+              if (step % n == 0)
+              {
+                 i = stepMD % ir->iL;
+                 /* We need to collect all particle states on the master node for the Metropolis test */
+                 if (i == 0)
+                 {
+                    if (DOMAINDECOMP(cr))
+                       dd_collect_state(cr->dd,state,state_global);
+                    else if (cr->nnodes > 1) // Particle decomposition, collect the data on the master node
+                       move_rvecs(cr,FALSE,FALSE,GMX_LEFT,GMX_RIGHT, state_global->x, NULL, (cr->nnodes-cr->npmenodes)-1,NULL);
+                 }
+              
+                 if (stepMD == 0)
+                 {
+                    backup_state(state, s_beforMD[0], &f, &f_beforMD[0]);
+                    if (MASTER(cr))
+                    {
+                       backup_state(state_global, g_beforMD[0], NULL, NULL);
+                       u_beforMD = enerd->term[F_EPOT];
+                       k_beforMD = enerd->term[F_EKIN];
                        Etot_beforMD = u_beforMD + k_beforMD;
+                       /* Andersen barostat */
                        if (ir->epc == epcANDERSEN)
                           Etot_beforMD += 0.5*(ir->dMuMass)*(sqr(state->v_q)) + (state->q)*(ir->dAlphaPress);
-
+                       /* Andersen barostat */
                     }
-                    /* only write output after an accepted MDMC */
-                    bOutput=TRUE;
                  }
-
-                 /* prepare for part 2: PMMC */
-                 bck_step = step;                 
-
-                 GHMC_part = PMMC; 
-                 stepPM = curre;
-                 iTrial = 1;
-              } //  end of if (stepMD % ir->iL == forw3)
-           } // end of afterMD interpolation
-
-           stepMD++; // advance the MDMC counter
-        } // end of GSHMC: PART 1. MDMC
-
-
-reload: // goto point for momentum update retrials
-        if (bDoForce)
-        {
-          if (DOMAINDECOMP(cr))
-          {
-             dd_partition_system(fplog,step,cr,
-                                 TRUE,1,
-                                 state_global,top_global,ir,
-                                 state,&f,mdatoms,top,fr,
-                                 vsite,shellfc,constr,
-                                 nrnb,wcycle,do_verbose);
-          }
-
-          do_force(fplog,cr,ir,step,nrnb,wcycle,top,top_global,groups,
-                   state->box,state->x,&state->hist,
-                   f,force_vir,mdatoms,enerd,fcd,
-                   state->lambda,graph,
-                   fr,vsite,mu_tot,t,outf->fp_field,ed,bBornRadii,
-                   GMX_FORCE_NS | force_flags);
-          bDoForce = FALSE;
-        }
-
-
-        /* *** PART 2: Partial Momentum update Monte Carlo *** */
-        if (GHMC_part == PMMC) 
-        {
-           if (DOMAINDECOMP(cr))
-              dd_collect_state(cr->dd,state,state_global);
-           else if (cr->nnodes > 1) // Particle decomposition, collect the data on the master node
-              move_rvecs(cr,FALSE,FALSE,GMX_LEFT,GMX_RIGHT, state_global->x, NULL, (cr->nnodes-cr->npmenodes)-1,NULL);
-
-           /*if (ir->met == metGHMC || ir->met == metHMC) // PRUEBA
-           {
-               momentum_update(fplog, constr, ir, mdatoms, state, f, graph, cr, nrnb, fr, top, 
-                               shake_vir, rng, &dDeltaXi, f_afterMD[forw1], f_afterMD[back1]);
-               momentum_flip(state->natoms, state->v);
-               GHMC_part = MDMC;
-           }
-           else
-           {*/
-
-           switch (stepPM)
-           {
-              case curre:
-               /* momentum update, includes optional variable change to increase acceptance rate */
-               momentum_update(fplog, constr, ir, mdatoms, state, f, graph, cr, nrnb, fr, top, 
-                               shake_vir, rng, &dDeltaXi, f_afterMD[forw1], f_afterMD[back1]);
-               
-               backup_state(state, s_beforMD[curre], &f, &f_beforMD[curre]); 
-
-               // here you should collect the velocities
-               if (DOMAINDECOMP(cr))
-                  dd_collect_vec(cr->dd, state, state->v, state_global->v);
-
-               if (MASTER(cr))
-                  backup_state(state_global, g_beforMD[curre], NULL, NULL);
-
-                 /* integrate three steps backwards and three forward to fill in 
-                    the positions buffer for calculating interpolation polynomial */
-                 stepPM = back1;
-                 /* reverse velocity to integrate backwards in time */
-                 momentum_flip(state->natoms, state->v);
-                 state->v_q *= -1.0; /* Andersen barostat */
-                 break;
-                 
-              case back1:
-                 backup_state(state, s_beforMD[back1], &f, &f_beforMD[back1]); 
-                 if (MASTER(cr))
-                    backup_state(state_global, g_beforMD[back1], NULL, NULL);
-                 stepPM = back2;
-                 break;
-
-              case back2:
-                 backup_state(state, s_beforMD[back2], &f, &f_beforMD[back2]); 
-                 if (MASTER(cr))
-                    backup_state(state_global, g_beforMD[back2], NULL, NULL);
-                 stepPM = back3;
-                 break;
-
-              case back3:
-                 backup_state(state, s_beforMD[back3], &f, &f_beforMD[back3]); 
-                 if (MASTER(cr))
-                    backup_state(state_global, g_beforMD[back3], NULL, NULL);
-                 stepPM = forw1;
-                 /* recover the state at the current timestep with the updated momentum */
-                 backup_state(s_beforMD[curre], state, &f_beforMD[curre], &f);
-                 if (MASTER(cr))
-                    backup_state(g_beforMD[curre], state_global, NULL, NULL);
-                 break;
-   
-              case forw1:
-                 backup_state(state, s_beforMD[forw1], &f, &f_beforMD[forw1]); 
-                 if (MASTER(cr))
-                    backup_state(state_global, g_beforMD[forw1], NULL, NULL);
-                 stepPM = forw2;
-                 break;
-
-              case forw2:
-                 backup_state(state, s_beforMD[forw2], &f, &f_beforMD[forw2]); 
-                 if (MASTER(cr))
-                    backup_state(state_global, g_beforMD[forw2], NULL, NULL);
-                 stepPM = forw3;
-                 break;
-
-              case forw3:
-                 backup_state(state, s_beforMD[forw3], &f, &f_beforMD[forw3]);
-                 if (MASTER(cr))
-                    backup_state(state_global, g_beforMD[forw3], NULL, NULL);
-
-                 /* Perform Metropolis test for the updated momentum */
-                 if (MASTER(cr) && ir->met == metGSHMC) // PRUEBA
+                 /* second time through, fill in afterMD */
+                 else if (i == 0)
                  {
-                    if (debug)
+                    backup_state(state, s_afterMD[i], &f, &f_afterMD[i]);
+                    if (MASTER(cr))
                     {
-                       fprintf(fplog, "PMMC step is: forward +3 \n"); 
-                       printf("PMMC step is: forward +3 \n"); 
+                       backup_state(state_global, g_afterMD[i], NULL, NULL);
+                       u_afterMD = enerd->term[F_EPOT];
+                       k_afterMD = enerd->term[F_EKIN];
+                       Etot_afterMD = u_afterMD + k_afterMD;
+                       /* Andersen barostat */
+                       if (ir->epc == epcANDERSEN)
+                          Etot_afterMD += 0.5*(ir->dMuMass)*(sqr(state->v_q)) + (state->q)*(ir->dAlphaPress);
+                       /* Andersen barostat */
                     }
-                    iMetro = metropolis(fplog, top_global, ir, g_afterMD, g_beforMD, dDeltaXi,  
-                                        u_beforMD, u_beforMD, rng, PMMC, Etot_beforMD, Etot_beforMD, iTrial, &weight, step, &bFlip); 
-                 }
-                 if (PAR(cr))
-                    gmx_bcast(sizeof(int), &iMetro, cr);
 
-                 if (iMetro == REJECTED && iTrial < ir->iMomUpd && ir->met == metGSHMC) // PRUEBA
-                 {
-                    /* recover original velocity and update again */
-                    backup_state(s_afterMD[curre], state, &f_afterMD[curre], &f); 
+                    /* We perform a test, either Metropolis or Metropolis reduced flipping (Pande) */
                     if (MASTER(cr))
-                       backup_state(g_afterMD[curre], state_global, NULL, NULL);
+                       iMetro = metropolis(fplog, top_global, ir, g_beforMD, g_afterMD, 0.0,  
+                                           u_beforMD, u_afterMD, rng, MDMC, Etot_beforMD, Etot_afterMD, iTrial, &weight, step, &bFlip);
+                    if (PAR(cr))
+                       gmx_bcast(sizeof(int), &iMetro, cr);
 
-                    // here this is necessary for re-updating the constr
-                    bDoForce = TRUE;
-
-                    iTrial++;
-                    stepPM = curre;
-                    goto reload;
-                 }
-                 else if (iMetro == REJECTED && iTrial == ir->iMomUpd && ir->met == metGSHMC) // PRUEBA
-                 {
-                    /* if no momentum updates were accepted, restore the state afterMD 
-                       and continue integrating from forw3 */
-                    backup_state(s_afterMD[forw3], state, &f_afterMD[forw3], &f);
-                    if (MASTER(cr))
-                       backup_state(g_afterMD[forw3], state_global, NULL, NULL);
-
-                    for (i=back3; i<=forw3; i++)
+                    /* if test is REJECTED, recover state beforMD, flip the momentum (if it is necessary) and go on to PMMC  */
+                    if (iMetro == REJECTED)
                     {
-                       backup_state(s_afterMD[i], s_beforMD[i], &f_afterMD[i], &f_beforMD[i]);
+                       /* Momentum FLip */
+                       if (ir->met == metGHMC && ((ir->bPandeTest && bFlip == TRUE) || (!(ir->bPandeTest) && ir->bMomFlip)))
+                       {
+                          momentum_flip(s_beforMD[0]->natoms, s_beforMD[0]->v);
+                          /* Andersen barostat */
+                          if (ir->epc == epcANDERSEN)
+                          {
+                             s_beforMD[0]->v_q *= -1;
+                             if (MASTER(cr))
+                                g_beforMD[0]->v_q *= -1;
+                          }
+                          /* Andersen barostat */
+                       }
+                       /* The rest is common for momentum flip and no momentum flip */
+                       backup_state(s_beforMD[0], s_afterMD[i], &f_beforMD[0], &f_afterMD[i]);
                        if (MASTER(cr))
-                          backup_state(g_afterMD[i], g_beforMD[i], NULL, NULL);
+                          backup_state(g_beforMD[0], g_afterMD[i], NULL, NULL);
+
+                       /* either way, restore the state at the center of the interpolation beforMD */
+                       backup_state(s_beforMD[0], state, &f_beforMD[0], &f);
+                       if (MASTER(cr))
+                          backup_state(g_beforMD[0], state_global, NULL, NULL);
+                 
+                       bDoForce = TRUE;
                     }
+                    /* if test is ACCEPTED, recover the state at the center
+                       of the interpolation polynomial and go on to PMMC */ 
+                    else
+                    {
+                       if (MASTER(cr))
+                       {
+                          /* the energies at the center of the interpolation will not change in PMMC */
+                          u_beforMD = u_afterMD;
+                          k_beforMD = k_afterMD;
+                          Etot_beforMD = u_beforMD + k_beforMD;
+                          /* Andersen barostat */
+                          if (ir->epc == epcANDERSEN)
+                             Etot_beforMD += 0.5*(ir->dMuMass)*(sqr(state->v_q)) + (state->q)*(ir->dAlphaPress);
+                          /* Andersen barostat */
+                       }
+                    }
+                    /* prepare for part 2: PMMC */
+                    bOutput=TRUE;
 
-                    // here this is necessary for re-updating the constr
-                    bDoForce = TRUE;
-                    GHMC_part = MDMC;
-                    ir->nstcalcenergy = bck_nstcalcenergy;
-                    step = bck_step; 
-                    goto reload;
+                    GHMC_part = PMMC; 
                  }
-                 else //: ACCEPTED. The state beforMD is already filled in, so we continue integrating from 'forw3'
-                 {
-                    GHMC_part = MDMC;
-                    ir->nstcalcenergy = bck_nstcalcenergy;
-                    step = bck_step; 
-                 }
-                 break;
-           } // end of switch(stepPM)
-           //} // PRUEBA
-        } // end of GSHMC: PART 2. PMMC
+                 stepMD++; // advance the MDMC counter
+              }
+           } // end of GHMC: PART 1. MDMC
 
-  if (MASTER(cr) && debug)
-  {
-     if (GHMC_part == MDMC)
-        fprintf(fplog, "MDMC step %i \n", stepMD-1); 
-     if (GHMC_part == PMMC)
-     {
-        switch (stepPM)
-        {
-           case back1:
-              fprintf(fplog, "MDMC step %i \n", stepMD-1); 
-              break;
-           case back2:
-              fprintf(fplog, "PMMC step is: backwards -1 \n"); 
-              printf("PMMC step is: backwards -1 \n"); 
-              break;
-           case back3:
-              fprintf(fplog, "PMMC step is: backwards -2 \n"); 
-              printf("PMMC step is: backwards -2 \n"); 
-              break;
-           case forw1:
-              fprintf(fplog, "PMMC step is: backwards -3 \n"); 
-              printf("PMMC step is: backwards -3 \n"); 
-              break;
-           case forw2:
-              fprintf(fplog, "PMMC step is: forward +1 \n"); 
-              printf("PMMC step is: forward +1 \n"); 
-              break;
-           case forw3:
-              fprintf(fplog, "PMMC step is: forward +2 \n"); 
-              printf("PMMC step is: forward +2 \n"); 
-              break;
+           if (bDoForce)
+           {
+              if (DOMAINDECOMP(cr))
+              {
+                 dd_partition_system(fplog,step,cr,
+                                     TRUE,1,
+                                     state_global,top_global,ir,
+                                     state,&f,mdatoms,top,fr,
+                                     vsite,shellfc,constr,
+                                     nrnb,wcycle,do_verbose);
+              }
+
+              do_force(fplog,cr,ir,step,nrnb,wcycle,top,top_global,groups,
+                       state->box,state->x,&state->hist,
+                       f,force_vir,mdatoms,enerd,fcd,
+                       state->lambda,graph,
+                       fr,vsite,mu_tot,t,outf->fp_field,ed,bBornRadii,
+                       GMX_FORCE_NS | force_flags);
+              bDoForce = FALSE;
+           }
+
+           /* *** PART 2: Partial Momentum update Monte Carlo *** */
+           if (GHMC_part == PMMC) 
+           {
+              /* momentum update, includes optional variable change to increase acceptance rate */
+              momentum_update(fplog, constr, ir, mdatoms, state, f, graph, cr, nrnb, fr, top, 
+                              shake_vir, rng, &dDeltaXi, NULL, NULL);
+               
+              backup_state(state, s_beforMD[0], &f, &f_beforMD[0]); 
+
+              // here you should collect the velocities
+              if (DOMAINDECOMP(cr))
+                 dd_collect_vec(cr->dd, state, state->v, state_global->v);
+              if (MASTER(cr))
+                 backup_state(state_global, g_beforMD[0], NULL, NULL);
+
+              GHMC_part = MDMC;
+              ir->nstcalcenergy = bck_nstcalcenergy;
+           } // end of GHMC: PART 2. PMMC
         }
-     }
-  }
-
-} // end of if (ir->bGSHMC)
-     /* #####################       END OF GSHMC        #################### */
-
+        /* #####################       END OF GHMC        #################### */
 
         
         /* ################## START TRAJECTORY OUTPUT ################# */
@@ -2735,8 +2827,7 @@ reload: // goto point for momentum update retrials
         if (bCPT) { mdof_flags |= MDOF_CPT; };
 
         /* GSHMC: output only after an accepted MDMC part */
-        //if (ir->bGSHMC)
-        if (ir->met == metGSHMC) // PRUEBA
+        if (ir->met == metGSHMC || ir->met == metGHMC || ir->met == metHMC)
         {
            mdof_flags = 0;
            if (bCPT) { mdof_flags |= MDOF_CPT; };
