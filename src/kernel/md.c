@@ -2760,8 +2760,8 @@ reload: // goto point for momentum update retrials
                     }
                     /* prepare for part 2: PMMC */
                     bOutput=TRUE;
-
-                    GHMC_part = PMMC; 
+                    if (ir->met == metGHMC)
+                       GHMC_part = PMMC;
                  }
                  stepMD++; // advance the MDMC counter
               }

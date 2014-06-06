@@ -582,11 +582,7 @@ void momentum_update(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms
                      t_forcerec *fr, gmx_localtop_t *top, tensor shake_vir,
                      gmx_rng_t rng, double *dDeltaXi, rvec *f_forw, rvec *f_back)
 {
-  real phi = 0.0;
-  if (ir->met == metHMC) // HMC method
-     phi = 1.5708;
-  else
-     phi = ir->dPhi;
+  real phi = ir->dPhi;
   real delta_t = ir->delta_t;
   real *massT = mdatoms->massT; 
   int n, d;
