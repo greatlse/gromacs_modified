@@ -4,7 +4,7 @@ enum test {REJECTED, ACCEPTED};
 
 /* Function for performing Metropolis test */
 int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *befor[7], t_state *after[7], double dDeltaXi,
-               real Uold, real Unew, gmx_rng_t rng, int iTest, real Etotold, real Etotnew, int iTrial, double *weight,
+               real Uold, real Unew, gmx_rng_t rng, int iTest, real Kold, real Knew, int iTrial, double *weight,
                gmx_large_int_t step, gmx_bool *bFlip);
 
 /* Function for calculating hamiltonians in GHMC */

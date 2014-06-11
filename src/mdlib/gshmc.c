@@ -60,10 +60,12 @@ static void low_mspeed2(FILE *fplog, t_commrec *cr, real tempi, t_mdatoms *mdato
 
 /* Function for performing Pande test in GSHMC */
 int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7], t_state *candidate[7], double dDeltaXi,
-               real Ucurrent, real Ucandidate, gmx_rng_t rng, int iTest, real Etotcurrent, real Etotcandidate, int iTrial, double *weight, 
+               real Ucurrent, real Ucandidate, gmx_rng_t rng, int iTest, real Kcurrent, real Kcandidate, int iTrial, double *weight, 
                gmx_large_int_t step, gmx_bool *bFlip)
 {
   real dHamCand = 0.0, dHamCurr = 0.0;
+  real Etotcandidate = Ucandidate + Kcandidate;
+  real Etotcurrent   = Ucurrent   + Kcurrent;
 
   if (ir->epc != epcANDERSEN)
   {
@@ -205,7 +207,7 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7
         MDMCaccepted++;
 
         /* Calculate reweight and output for autocorrelating */
-        *weight = exp( -dBeta * (Etotcurrent - dHamCand));
+        *weight = exp( -dBeta * (Etotcandidate - dHamCand));
      }
      else if (ir->bPandeTest)
      {

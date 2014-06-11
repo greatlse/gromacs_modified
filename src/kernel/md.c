@@ -1228,11 +1228,15 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
        real    u_afterMD = 0.0;
        real    k_beforMD = 0.0;
        real    k_afterMD = 0.0;
-       real    Etot_beforMD = 0.0;
-       real    Etot_afterMD = 0.0;
        int iCountX=1, iCountV=1, iCountF=1, iCountXTC=1, iCountE=1;
        int seed;
        gmx_rng_t rng;
+       int k,l;
+       real ekin;
+       int start = mdatoms->start;
+       int homenr = mdatoms->homenr;
+       int nrend = start + homenr;
+       real *massT = mdatoms->massT;
        /* Pande test */
        gmx_bool bFlip = FALSE;
        /* New integrators VNI */
@@ -2379,12 +2383,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                     if (stepMD == curre)
                     {
                        u_beforMD = enerd->term[F_EPOT];
-                       /* Andersen barostat */
                        k_beforMD = enerd->term[F_EKIN];
-                       Etot_beforMD = u_beforMD + k_beforMD;
-                       if (ir->epc == epcANDERSEN)
-                          Etot_beforMD += 0.5*(ir->dMuMass)*(sqr(state->v_q)) + (state->q)*(ir->dAlphaPress);
-                       /* Andersen barostat */
                     }
                  }
               }
@@ -2399,12 +2398,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                     if (i == curre)
                     {
                        u_afterMD = enerd->term[F_EPOT];
-                       /* Andersen barostat */
                        k_afterMD = enerd->term[F_EKIN];
-                       Etot_afterMD = u_afterMD + k_afterMD;
-                       if (ir->epc == epcANDERSEN)
-                          Etot_afterMD += 0.5*(ir->dMuMass)*(sqr(state->v_q)) + (state->q)*(ir->dAlphaPress);
-                       /* Andersen barostat */
                     }
                  }
 
@@ -2413,7 +2407,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                     /* We perform a test, either Metropolis or Metropolis with reduced flipping (Pande) */
                     if (MASTER(cr))
                        iMetro = metropolis(fplog, top_global, ir, g_beforMD, g_afterMD, 0.0,  
-                                           u_beforMD, u_afterMD, rng, MDMC, Etot_beforMD, Etot_afterMD, iTrial, &weight, step, &bFlip);
+                                           u_beforMD, u_afterMD, rng, MDMC, k_beforMD, k_afterMD, iTrial, &weight, step, &bFlip);
                     if (PAR(cr))
                        gmx_bcast(sizeof(int), &iMetro, cr);
 
@@ -2480,11 +2474,6 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                           /* the pot. energy at the center of the interpolation will not change in PMMC */
                           u_beforMD = u_afterMD;
                           k_beforMD = k_afterMD;
-                          Etot_beforMD = u_beforMD + k_beforMD;
-                          /* Andersen barostat */
-                          if (ir->epc == epcANDERSEN)
-                             Etot_beforMD += 0.5*(ir->dMuMass)*(sqr(state->v_q)) + (state->q)*(ir->dAlphaPress);
-                          /* Andersen barostat */
                        }
                     }
 
@@ -2606,7 +2595,7 @@ reload: // goto point for momentum update retrials
                           fprintf(stderr, "PMMC step is: forward +3 \n"); 
                        }
                        iMetro = metropolis(fplog, top_global, ir, g_afterMD, g_beforMD, dDeltaXi,  
-                                           u_beforMD, u_beforMD, rng, PMMC, Etot_beforMD, Etot_beforMD, iTrial, &weight, step, &bFlip); 
+                                           u_beforMD, u_beforMD, rng, PMMC, k_beforMD, k_beforMD, iTrial, &weight, step, &bFlip); 
                     }
                     if (PAR(cr))
                        gmx_bcast(sizeof(int), &iMetro, cr);
@@ -2656,8 +2645,10 @@ reload: // goto point for momentum update retrials
                     break;
               } // end of switch(stepPM)
            } // end of GSHMC: PART 2. PMMC
-        } // end of if (ir->bGSHMC)
+        } // end of if (ir->met == metGSHMC)
         /* #####################       END OF GSHMC        #################### */
+
+
         /* ###########  GHMC: Generalized Hybrid Monte Carlo and HMC: Hybrid Monte Carlo  ######### */
         else if ((ir->met == metHMC || ir->met == metGHMC) && step_rel != 0)
         {
@@ -2684,11 +2675,6 @@ reload: // goto point for momentum update retrials
                        backup_state(state_global, g_beforMD[0], NULL, NULL);
                        u_beforMD = enerd->term[F_EPOT];
                        k_beforMD = enerd->term[F_EKIN];
-                       Etot_beforMD = u_beforMD + k_beforMD;
-                       /* Andersen barostat */
-                       if (ir->epc == epcANDERSEN)
-                          Etot_beforMD += 0.5*(ir->dMuMass)*(sqr(state->v_q)) + (state->q)*(ir->dAlphaPress);
-                       /* Andersen barostat */
                     }
                  }
                  /* second time through, fill in afterMD */
@@ -2700,17 +2686,12 @@ reload: // goto point for momentum update retrials
                        backup_state(state_global, g_afterMD[i], NULL, NULL);
                        u_afterMD = enerd->term[F_EPOT];
                        k_afterMD = enerd->term[F_EKIN];
-                       Etot_afterMD = u_afterMD + k_afterMD;
-                       /* Andersen barostat */
-                       if (ir->epc == epcANDERSEN)
-                          Etot_afterMD += 0.5*(ir->dMuMass)*(sqr(state->v_q)) + (state->q)*(ir->dAlphaPress);
-                       /* Andersen barostat */
                     }
 
-                    /* We perform a test, either Metropolis or Metropolis reduced flipping (Pande) */
+                    /* We perform a test, either Metropolis or Metropolis reduced flipping */
                     if (MASTER(cr))
                        iMetro = metropolis(fplog, top_global, ir, g_beforMD, g_afterMD, 0.0,  
-                                           u_beforMD, u_afterMD, rng, MDMC, Etot_beforMD, Etot_afterMD, iTrial, &weight, step, &bFlip);
+                                           u_beforMD, u_afterMD, rng, MDMC, k_beforMD, k_afterMD, iTrial, &weight, step, &bFlip);
                     if (PAR(cr))
                        gmx_bcast(sizeof(int), &iMetro, cr);
 
@@ -2751,17 +2732,11 @@ reload: // goto point for momentum update retrials
                           /* the energies at the center of the interpolation will not change in PMMC */
                           u_beforMD = u_afterMD;
                           k_beforMD = k_afterMD;
-                          Etot_beforMD = u_beforMD + k_beforMD;
-                          /* Andersen barostat */
-                          if (ir->epc == epcANDERSEN)
-                             Etot_beforMD += 0.5*(ir->dMuMass)*(sqr(state->v_q)) + (state->q)*(ir->dAlphaPress);
-                          /* Andersen barostat */
                        }
                     }
                     /* prepare for part 2: PMMC */
                     bOutput=TRUE;
-                    if (ir->met == metGHMC)
-                       GHMC_part = PMMC;
+                    GHMC_part = PMMC;
                  }
                  stepMD++; // advance the MDMC counter
               }
@@ -2791,11 +2766,27 @@ reload: // goto point for momentum update retrials
            /* *** PART 2: Partial Momentum update Monte Carlo *** */
            if (GHMC_part == PMMC) 
            {
-              /* momentum update, includes optional variable change to increase acceptance rate */
-              momentum_update(fplog, constr, ir, mdatoms, state, f, graph, cr, nrnb, fr, top, 
-                              shake_vir, rng, &dDeltaXi, NULL, NULL);
+              if (ir->met == metGHMC)
+                 /* momentum update */
+                 momentum_update(fplog, constr, ir, mdatoms, state, f, graph, cr, nrnb, fr, top, 
+                                 shake_vir, rng, &dDeltaXi, NULL, NULL);
+              else // PRUEBA
+                 /* momentum generate */
+                 momentum_generate(fplog, constr, ir, mdatoms, state, f, graph,
+                                   cr, nrnb, fr, top, shake_vir, rng);
+
+              ekin = 0.0;
+              for (k=start;k<nrend;k++)
+              {
+                 if (massT[k]>0)
+                 {
+                    for(l=0;l<DIM;l++)
+                       ekin+=0.5*massT[k]*state->v[k][l]*state->v[k][l];
+                 }
+              }
+              k_beforMD = ekin;
                
-              backup_state(state, s_beforMD[0], &f, &f_beforMD[0]); 
+              backup_state(state, s_beforMD[0], &f, &f_beforMD[0]);
 
               // here you should collect the velocities
               if (DOMAINDECOMP(cr))
@@ -2806,7 +2797,7 @@ reload: // goto point for momentum update retrials
               GHMC_part = MDMC;
               ir->nstcalcenergy = bck_nstcalcenergy;
            } // end of GHMC: PART 2. PMMC
-        }
+        } // end of if (ir->met == metGHMC || ir->met == metHMC)
         /* #####################       END OF GHMC        #################### */
 
         
