@@ -1214,10 +1214,10 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
        int iMetro = ACCEPTED;
        int j=0;
        double dDeltaXi = 0.0;
-          double weight = 0.0;
-          FILE *my_stream;
-          if (MASTER(cr))
-             my_stream = fopen("WEIGHTS", "w");
+       double weight = 0.0;
+       FILE *my_stream;
+       if (MASTER(cr))
+          my_stream = fopen("WEIGHTS", "w");
        t_state *s_beforMD[7] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL};
        t_state *s_afterMD[7] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL};
        t_state *g_beforMD[7] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL};
@@ -1232,11 +1232,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
        int seed;
        gmx_rng_t rng;
        int k,l;
-       real ekin;
-       int start = mdatoms->start;
-       int homenr = mdatoms->homenr;
-       int nrend = start + homenr;
-       real *massT = mdatoms->massT;
+       double ekin = 0.0;
        /* Pande test */
        gmx_bool bFlip = FALSE;
        /* New integrators VNI */
@@ -2770,13 +2766,16 @@ reload: // goto point for momentum update retrials
                  /* momentum update */
                  momentum_update(fplog, constr, ir, mdatoms, state, f, graph, cr, nrnb, fr, top, 
                                  shake_vir, rng, &dDeltaXi, NULL, NULL);
-              else // PRUEBA
+              else
                  /* momentum generate */
                  momentum_generate(fplog, constr, ir, mdatoms, state, f, graph,
                                    cr, nrnb, fr, top, shake_vir, rng);
 
-              ekin = 0.0;
-              for (k=start;k<nrend;k++)
+              int start  = mdatoms->start;
+              int homenr = mdatoms->homenr;
+              int nrend  = start + homenr;
+              real *massT = mdatoms->massT;
+              for (k = start; k < nrend; k++)
               {
                  if (massT[k]>0)
                  {
@@ -2784,7 +2783,10 @@ reload: // goto point for momentum update retrials
                        ekin+=0.5*massT[k]*state->v[k][l]*state->v[k][l];
                  }
               }
-              k_beforMD = ekin;
+              if (PAR(cr))
+                 gmx_sumd(1, &ekin, cr);
+              if (MASTER(cr))
+                 k_beforMD = (real) ekin;
                
               backup_state(state, s_beforMD[0], &f, &f_beforMD[0]);
 
