@@ -2787,6 +2787,7 @@ reload: // goto point for momentum update retrials
                  gmx_sumd(1, &ekin, cr);
               if (MASTER(cr))
                  k_beforMD = (real) ekin;
+              ekin = 0.0;
                
               backup_state(state, s_beforMD[0], &f, &f_beforMD[0]);
 
