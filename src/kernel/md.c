@@ -1240,6 +1240,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
        int    intSteps = 0;
        double intCoeffs[9] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
        double da1 = 0.0, da2 = 0.0, db1 = 0.0, db2 = 0.0, db3 = 0.0;
+       int    stepIntegrator = 0;
 
        /* with domain decomposition, energy must be calculated at every step 
           of the interpolation */
@@ -1276,37 +1277,38 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             n = 1;
             intCoeffs[0] = 0.5, intCoeffs[1] = 1.0;
         }
-        if (ir->eI==eiVNI5)
+        else if (ir->eI==eiVNI5)
         {
             n = 2; 
             // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
-            da1 = 0.5, db1 = (3.0 - sqrt(3.0))/6.0, db2 = 0.5 - db1;
+            da1 = 0.5;
+            db1 = (3.0 - sqrt(3.0))/6.0, db2 = 1.0 - 2.0*db1;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
             intCoeffs[2] = db2*0.5;
             intCoeffs[3] = da1, intCoeffs[4] = db1;
         }
-        if (ir->eI==eiVNI7)
+        else if (ir->eI==eiVNI7)
         {
             n = 3;
-            // [b1, a1, b2, a2, b2, a1, b1,  0,  0]
-            da1 = 0.11888010966548, da2 = 0.5 - da1;
-            db1 = 0.29619504261126, db2 = 1.0 - 2.0*db1;
+            // [b1, a1, b2/2, a2, b2/2, a1, b1,  0,  0]
+            da1 = 0.29619504261126, da2 = 1.0 - 2.0*da1;
+            db1 = 0.11888010966548, db2 = 0.5 - db1;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
-            intCoeffs[2] = db2, intCoeffs[3] = da2;
-            intCoeffs[4] = db2, intCoeffs[5] = da1;
+            intCoeffs[2] = db2*0.5, intCoeffs[3] = da2;
+            intCoeffs[4] = db2*0.5, intCoeffs[5] = da1;
             intCoeffs[6] = db1;
         }
-        if (ir->eI==eiVNI9)
+        else if (ir->eI==eiVNI9)
         {
             n = 4;
-            // [b1, a1, b2, a2, b3, a2, b2, a1, b1]
-            da1 = 0.071353913450279725904;
-            da2 = 0.268548791161230105820, db3 = 1.0 - 2.0*da1 - 2.0*da2;
-            db1 = 0.191667800000000000000, db2 = 0.5 - db1;
+            // [b1, a1, b2/2, a2, b3/2, a2, b2/2, a1, b1]
+            da1 = 0.191667800000000000000, da2 = 0.5 - da1;
+            db1 = 0.071353913450279725904;
+            db2 = 0.268548791161230105820, db3 = 1.0 - 2.0*db1 - 2.0*db2;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
-            intCoeffs[2] = db2, intCoeffs[3] = da2;
-            intCoeffs[4] = db3, intCoeffs[5] = da2;
-            intCoeffs[6] = db2, intCoeffs[7] = da1;
+            intCoeffs[2] = db2*0.5, intCoeffs[3] = da2;
+            intCoeffs[4] = db3*0.5, intCoeffs[5] = da2;
+            intCoeffs[6] = db2*0.5, intCoeffs[7] = da1;
             intCoeffs[8] = db1;
         }
     }
@@ -1828,7 +1830,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
         else 
         {
             bLastStep = (step_rel == ir->nsteps);
-            t = t0 + (step/n)*ir->delta_t; // PRUEBA
+            t = t0 + step*ir->delta_t;
         }
 
         if (ir->efep != efepNO)
@@ -2447,16 +2449,6 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                        if (MASTER(cr))
                           backup_state(g_beforMD[curre], state_global, NULL, NULL);
    
-                       /* Re-adjust the stepMD counter */
-// PRUEBA                                    if (stepMD > ir->iL)
-// PRUEBA                                       stepMD -= ir->iL;
-// PRUEBA                                    else
-// PRUEBA                                       stepMD = forw3;
-// PRUEBA no rewinding                       if (step > ir->iL)
-// PRUEBA no rewinding                          step -= ir->iL;
-// PRUEBA no rewinding                       else
-// PRUEBA no rewinding                          step = forw3;
-
                        bDoForce = TRUE;
                     }
                     /* if test is ACCEPTED, recover the state at the center
@@ -2651,7 +2643,7 @@ reload: // goto point for momentum update retrials
            /* *** PART 1: Molecular Dynamics Monte Carlo *** */
            if (GHMC_part == MDMC)
            {
-              if (step % n == 0)
+              if (stepIntegrator % n == 0)
               {
                  i = stepMD % ir->iL;
                  /* We need to collect all particle states on the master node for the Metropolis test */
@@ -2780,7 +2772,7 @@ reload: // goto point for momentum update retrials
                  if (massT[k]>0)
                  {
                     for(l=0;l<DIM;l++)
-                       ekin+=0.5*massT[k]*state->v[k][l]*state->v[k][l];
+                       ekin += 0.5*massT[k]*state->v[k][l]*state->v[k][l];
                  }
               }
               if (PAR(cr))
@@ -3436,7 +3428,7 @@ reload: // goto point for momentum update retrials
             }
         }
         
-        if (!bRerunMD || !rerun_fr.bStep)
+        if ((!bRerunMD || !rerun_fr.bStep) && stepIntegrator % n == 0)
         {
             /* increase the MD step number */
             step++;
@@ -3461,6 +3453,7 @@ reload: // goto point for momentum update retrials
             gs.set[eglsRESETCOUNTERS] = 0;
         }
 
+        stepIntegrator++;
     }
     /* End of main MD loop */
     debug_gmx();

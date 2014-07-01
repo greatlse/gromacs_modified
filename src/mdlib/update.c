@@ -339,7 +339,9 @@ static void do_update_vv_pos(int start,int nrend,double dt,
           if ((ptype[n] != eptVSite) && (ptype[n] != eptShell) && !nFreeze[gf][d])
           {
               if (epc != epcANDERSEN)
+{
                   xprime[n][d] = mr1*(mr1*state->x[n][d]+mr2*dCoeff*dt*state->v[n][d]);
+}
               else
               {
                   /* Andersen Barostat */
@@ -1780,7 +1782,6 @@ void update_coords(FILE *fplog,
                              state,force,inputrec->dMuMass,inputrec->dAlphaPress,
                              bExtended,alpha,
                              0.5);
-//printf("velocidad 1\n"); // PRUEBA
             break;
         case etrtVELOCITY2:
             if (inputrec->epc != epcANDERSEN)
@@ -1804,7 +1805,6 @@ void update_coords(FILE *fplog,
                                  bExtended,alpha,
                                  0.5);
             }
-//printf("velocidad 2\n"); // PRUEBA
             break;
         case etrtPOSITION:
             if (inputrec->epc == epcANDERSEN)
@@ -1822,7 +1822,6 @@ void update_coords(FILE *fplog,
                              state,xprime,force,inputrec->dMuMass,
                              bExtended,alpha,
                              1.0);
-//printf("posicion\n"); // PRUEBA
             break;
         }
         break;
@@ -1844,7 +1843,6 @@ void update_coords(FILE *fplog,
                              state,force,inputrec->dMuMass,inputrec->dAlphaPress,
                              bExtended,alpha,
                              intCoeffs[coeffVel1]);
-//printf("Coeficiente velocidad 1 = %f\n",intCoeffs[coeffVel1]); // PRUEBA
             if (*intSteps == 1 | step == 0)
                *intSteps = 0;
             else
@@ -1861,7 +1859,6 @@ void update_coords(FILE *fplog,
                              state,force,inputrec->dMuMass,inputrec->dAlphaPress,
                              bExtended,alpha,
                              intCoeffs[coeffVel2]);
-//printf("Coeficiente velocidad 2 = %f\n",intCoeffs[coeffVel2]); // PRUEBA
             break;
         case etrtPOSITION:
             coeffPos = 2.0*(*intSteps) + 1.0;
@@ -1873,14 +1870,18 @@ void update_coords(FILE *fplog,
                              state,xprime,force,inputrec->dMuMass,
                              bExtended,alpha,
                              intCoeffs[coeffPos]);
-//printf("Coeficiente posicion = %f\n",intCoeffs[coeffPos]); // PRUEBA
             break;
         }
+        break;
     case (eiVNI7):
-    case (eiVNI9):
         switch (UpdatePart) {
         case etrtVELOCITY1:
-            coeffVel1 = 2.0*(*intSteps) + 2.0; 
+            if (step == 0)
+            {
+               coeffVel1 = 0.0;
+            }
+            else
+               coeffVel1 = 2.0*(*intSteps) + 2.0; 
             /* Velocities */
             do_update_vv_vel(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
@@ -1890,7 +1891,12 @@ void update_coords(FILE *fplog,
                              state,force,inputrec->dMuMass,inputrec->dAlphaPress,
                              bExtended,alpha,
                              intCoeffs[coeffVel1]);
-            intSteps += 1;
+            if (*intSteps == 2 | step == 0)
+               *intSteps = 0;
+            else if (*intSteps == 0)
+               *intSteps = 1;
+            else if (*intSteps == 1)
+               *intSteps = 2;
             break;
         case etrtVELOCITY2:
             coeffVel2 = 2.0*(*intSteps);
@@ -1898,6 +1904,60 @@ void update_coords(FILE *fplog,
             do_update_vv_vel(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+
+                             md->invmass,md->ptype,
+                             md->cFREEZE,md->cACC,
+                             state,force,inputrec->dMuMass,inputrec->dAlphaPress,
+                             bExtended,alpha,
+                             intCoeffs[coeffVel2]);
+            break;
+        case etrtPOSITION:
+            coeffPos = 2.0*(*intSteps) + 1.0;
+            /* Positions */
+            do_update_vv_pos(start,nrend,dt,
+                             ekind->tcstat,ekind->grpstat,
+                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+                             md->invmass,md->ptype,md->cFREEZE,
+                             state,xprime,force,inputrec->dMuMass,
+                             bExtended,alpha,
+                             intCoeffs[coeffPos]);
+            break;
+        }
+        break;
+    case (eiVNI9):
+        switch (UpdatePart) {
+        case etrtVELOCITY1:
+            if (step == 0)
+            {
+               coeffVel1 = 0.0;
+            }
+            else
+               coeffVel1 = 2.0*(*intSteps) + 2.0; 
+            /* Velocities */
+            do_update_vv_vel(start,nrend,dt,
+                             ekind->tcstat,ekind->grpstat,
+                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+                             md->invmass,md->ptype,
+                             md->cFREEZE,md->cACC,
+                             state,force,inputrec->dMuMass,inputrec->dAlphaPress,
+                             bExtended,alpha,
+                             intCoeffs[coeffVel1]);
+            if (*intSteps == 3 | step == 0)
+               *intSteps = 0;
+            else if (*intSteps == 0)
+               *intSteps = 1;
+            else if (*intSteps == 1)
+               *intSteps = 2;
+            else if (*intSteps == 2)
+               *intSteps = 3;
+            break;
+        case etrtVELOCITY2:
+            coeffVel2 = 2.0*(*intSteps);
+            /* Velocities */
+            do_update_vv_vel(start,nrend,dt,
+                             ekind->tcstat,ekind->grpstat,
+                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+
                              md->invmass,md->ptype,
                              md->cFREEZE,md->cACC,
                              state,force,inputrec->dMuMass,inputrec->dAlphaPress,

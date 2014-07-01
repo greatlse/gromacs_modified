@@ -210,5 +210,5 @@ const char *eMultentOpt_names[eMultentOptNR+1] = {
 };
 
 const char *method_names[metNR+1] = {
-  "HMC", "GHMC", "GSHMC", NULL
+  "HMC", "GHMC", "GSHMC", "NO", NULL
 };
