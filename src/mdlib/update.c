@@ -1649,7 +1649,7 @@ void update_coords(FILE *fplog,
                    double *intCoeffs)
 {
     gmx_bool bExtended,bNH,bPR,bTrotter,bLastStep,bLog=FALSE,bEner=FALSE;
-    double dt,alpha;
+    double dt,alpha,dt_int;
     real *imass,*imassin;
     rvec *force;
     real dt_1;
@@ -1826,6 +1826,7 @@ void update_coords(FILE *fplog,
         }
         break;
     case (eiVNI5):
+        dt_int = 2*dt;
         switch (UpdatePart) {
         case etrtVELOCITY1:
             if (step == 0)
@@ -1835,7 +1836,7 @@ void update_coords(FILE *fplog,
             else
                coeffVel1 = 2.0*(*intSteps) + 2.0; 
             /* Velocities */
-            do_update_vv_vel(start,nrend,dt,
+            do_update_vv_vel(start,nrend,dt_int,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
                              md->invmass,md->ptype,
@@ -1851,7 +1852,7 @@ void update_coords(FILE *fplog,
         case etrtVELOCITY2:
             coeffVel2 = 2.0*(*intSteps);
             /* Velocities */
-            do_update_vv_vel(start,nrend,dt,
+            do_update_vv_vel(start,nrend,dt_int,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
                              md->invmass,md->ptype,
@@ -1863,7 +1864,7 @@ void update_coords(FILE *fplog,
         case etrtPOSITION:
             coeffPos = 2.0*(*intSteps) + 1.0;
             /* Positions */
-            do_update_vv_pos(start,nrend,dt,
+            do_update_vv_pos(start,nrend,dt_int,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
                              md->invmass,md->ptype,md->cFREEZE,
@@ -1874,6 +1875,7 @@ void update_coords(FILE *fplog,
         }
         break;
     case (eiVNI7):
+        dt_int = 3*dt;
         switch (UpdatePart) {
         case etrtVELOCITY1:
             if (step == 0)
@@ -1883,7 +1885,7 @@ void update_coords(FILE *fplog,
             else
                coeffVel1 = 2.0*(*intSteps) + 2.0; 
             /* Velocities */
-            do_update_vv_vel(start,nrend,dt,
+            do_update_vv_vel(start,nrend,dt_int,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
                              md->invmass,md->ptype,
@@ -1901,7 +1903,7 @@ void update_coords(FILE *fplog,
         case etrtVELOCITY2:
             coeffVel2 = 2.0*(*intSteps);
             /* Velocities */
-            do_update_vv_vel(start,nrend,dt,
+            do_update_vv_vel(start,nrend,dt_int,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
 
@@ -1914,7 +1916,7 @@ void update_coords(FILE *fplog,
         case etrtPOSITION:
             coeffPos = 2.0*(*intSteps) + 1.0;
             /* Positions */
-            do_update_vv_pos(start,nrend,dt,
+            do_update_vv_pos(start,nrend,dt_int,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
                              md->invmass,md->ptype,md->cFREEZE,
@@ -1925,6 +1927,7 @@ void update_coords(FILE *fplog,
         }
         break;
     case (eiVNI9):
+        dt_int = 4*dt;
         switch (UpdatePart) {
         case etrtVELOCITY1:
             if (step == 0)
@@ -1934,7 +1937,8 @@ void update_coords(FILE *fplog,
             else
                coeffVel1 = 2.0*(*intSteps) + 2.0; 
             /* Velocities */
-            do_update_vv_vel(start,nrend,dt,
+printf("Paso = %f\n",dt_int); // PRUEBA
+            do_update_vv_vel(start,nrend,dt_int,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
                              md->invmass,md->ptype,
@@ -1954,7 +1958,7 @@ void update_coords(FILE *fplog,
         case etrtVELOCITY2:
             coeffVel2 = 2.0*(*intSteps);
             /* Velocities */
-            do_update_vv_vel(start,nrend,dt,
+            do_update_vv_vel(start,nrend,dt_int,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
 
@@ -1967,7 +1971,7 @@ void update_coords(FILE *fplog,
         case etrtPOSITION:
             coeffPos = 2.0*(*intSteps) + 1.0;
             /* Positions */
-            do_update_vv_pos(start,nrend,dt,
+            do_update_vv_pos(start,nrend,dt_int,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
                              md->invmass,md->ptype,md->cFREEZE,
