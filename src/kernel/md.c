@@ -1830,7 +1830,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
         else 
         {
             bLastStep = (step_rel == ir->nsteps);
-            t = t0 + step*ir->delta_t;
+            t = t0 + step*(ir->delta_t*n); // PRUEBA
         }
 
         if (ir->efep != efepNO)
