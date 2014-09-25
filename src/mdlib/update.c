@@ -1826,7 +1826,7 @@ void update_coords(FILE *fplog,
         }
         break;
     case (eiVNI5):
-        dt_int = 2*dt;
+        dt_int = 2*dt; // PRUEBA
         switch (UpdatePart) {
         case etrtVELOCITY1:
             if (step == 0)
@@ -1875,7 +1875,7 @@ void update_coords(FILE *fplog,
         }
         break;
     case (eiVNI7):
-        dt_int = 3*dt;
+        dt_int = 3*dt; // PRUEBA
         switch (UpdatePart) {
         case etrtVELOCITY1:
             if (step == 0)
@@ -1927,7 +1927,7 @@ void update_coords(FILE *fplog,
         }
         break;
     case (eiVNI9):
-        dt_int = 4*dt;
+        dt_int = 4*dt; // PRUEBA
         switch (UpdatePart) {
         case etrtVELOCITY1:
             if (step == 0)
@@ -1937,7 +1937,6 @@ void update_coords(FILE *fplog,
             else
                coeffVel1 = 2.0*(*intSteps) + 2.0; 
             /* Velocities */
-printf("Paso = %f\n",dt_int); // PRUEBA
             do_update_vv_vel(start,nrend,dt_int,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,

@@ -1279,7 +1279,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
         }
         else if (ir->eI==eiVNI5)
         {
-            n = 2; 
+            n = 2;
             // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
             da1 = 0.5;
             db1 = (3.0 - sqrt(3.0))/6.0, db2 = 1.0 - 2.0*db1;
@@ -1831,6 +1831,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
         {
             bLastStep = (step_rel == ir->nsteps);
             t = t0 + step*(ir->delta_t*n); // PRUEBA
+            //t = t0 + step*(ir->delta_t); // PRUEBA
         }
 
         if (ir->efep != efepNO)
@@ -3428,7 +3429,7 @@ reload: // goto point for momentum update retrials
             }
         }
         
-        if ((!bRerunMD || !rerun_fr.bStep) && stepIntegrator % n == 0)
+        if ((!bRerunMD || !rerun_fr.bStep) && stepIntegrator % n == 0) // PRUEBA
         {
             /* increase the MD step number */
             step++;
