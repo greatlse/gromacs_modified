@@ -79,10 +79,8 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7
      else
      {
         /* Calculate hamiltonian for candidate position and momentum */
-        //dHamCand = hamiltonian(mtop, ir, candidate, Ucandidate); // PRUEBA
         dHamCand = Etotcandidate;
         /* Calculate hamiltonian for current position and momentum */
-        //dHamCurr = hamiltonian(mtop, ir, current, Ucurrent); // PRUEBA
         dHamCurr = Etotcurrent;
      }
   }
@@ -177,7 +175,6 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7
      else
      {
         dProbabilityA = exp(dExponent);
-//        dProbabilityA = exp(dExponent) * current[curre]->q / candidate[curre]->q; // PRUEBA
         real dAlpha = gmx_rng_uniform_real(rng); 
         if (dAlpha < dProbabilityA)
            iResult = ACCEPTED;

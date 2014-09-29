@@ -1348,7 +1348,7 @@ void update_constraints(FILE *fplog,
                         gmx_bool bInitStep,
                         gmx_bool bFirstHalf,
                         gmx_bool bCalcVir,
-                        real vetanew)
+                        real vetanew) 
 {
     gmx_bool bExtended,bTrotter,bLastStep,bLog=FALSE,bEner=FALSE,bDoConstr=FALSE;
     double dt;
@@ -1826,7 +1826,7 @@ void update_coords(FILE *fplog,
         }
         break;
     case (eiVNI5):
-        dt_int = 2*dt; // PRUEBA
+        dt_int = 1*dt; // PRUEBA
         switch (UpdatePart) {
         case etrtVELOCITY1:
             if (step == 0)
@@ -1875,7 +1875,7 @@ void update_coords(FILE *fplog,
         }
         break;
     case (eiVNI7):
-        dt_int = 3*dt; // PRUEBA
+        dt_int = 1*dt; // PRUEBA
         switch (UpdatePart) {
         case etrtVELOCITY1:
             if (step == 0)
@@ -1927,7 +1927,7 @@ void update_coords(FILE *fplog,
         }
         break;
     case (eiVNI9):
-        dt_int = 4*dt; // PRUEBA
+        dt_int = 1*dt; // PRUEBA
         switch (UpdatePart) {
         case etrtVELOCITY1:
             if (step == 0)

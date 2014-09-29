@@ -1829,9 +1829,10 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
         } 
         else 
         {
-            bLastStep = (step_rel == ir->nsteps);
-            t = t0 + step*(ir->delta_t*n); // PRUEBA
+            bLastStep = (step_rel == ir->nsteps && stepIntegrator%n == 0); // PRUEBA
             //t = t0 + step*(ir->delta_t); // PRUEBA
+            //t = t0 + step*(ir->delta_t*n); // PRUEBA
+            t = t0 + stepIntegrator*(ir->delta_t/n); // PRUEBA
         }
 
         if (ir->efep != efepNO)
@@ -2241,7 +2242,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                 bOK = TRUE;
                 if ( !bRerunMD || rerun_fr.bV || bForceUpdate) {  /* Why is rerun_fr.bV here?  Unclear. */
                     dvdl = 0;
-                    
+                   
                     update_constraints(fplog,step,&dvdl,ir,ekind,mdatoms,state,graph,f,
                                        &top->idef,shake_vir,NULL,
                                        cr,nrnb,wcycle,upd,constr,
@@ -3121,7 +3122,7 @@ reload: // goto point for momentum update retrials
                 update_constraints(fplog,step,&dvdl,ir,ekind,mdatoms,state,graph,f,
                                    &top->idef,shake_vir,force_vir,
                                    cr,nrnb,wcycle,upd,constr,
-                                   bInitStep,FALSE,bCalcEnerPres,state->veta);  
+                                   bInitStep,FALSE,bCalcEnerPres,state->veta);
                 
                 if (ir->eI==eiVVAK) 
                 {
@@ -3151,7 +3152,7 @@ reload: // goto point for momentum update retrials
                                        &top->idef,tmp_vir,force_vir,
                                        cr,nrnb,wcycle,upd,NULL,
                                        bInitStep,FALSE,bCalcEnerPres,
-                                       state->veta);  
+                                       state->veta);
                 }
                 if (!bOK && !bFFscan) 
                 {

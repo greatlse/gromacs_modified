@@ -692,8 +692,7 @@ void check_ir(const char *mdparin,t_inputrec *ir, t_gromppopts *opts,
   }
 
   /* GSHMC STUFF */
-  //if (ir->bGSHMC == TRUE)
-  if (ir->met == metGSHMC) // PRUEBA
+  if (ir->met == metGSHMC) 
   {
      sprintf(err_buf, "GSHMC: parameter phi must be between 0 and PI/2\n");
      CHECK(ir->dPhi > M_PI_2 || ir->dPhi < 0.0);
