@@ -579,7 +579,8 @@ void momentum_flip(int natoms, rvec v[])
 void momentum_update(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms *mdatoms, t_state *state,
                      rvec *f, t_graph *graph, t_commrec *cr, t_nrnb *nrnb,
                      t_forcerec *fr, gmx_localtop_t *top, tensor shake_vir,
-                     gmx_rng_t rng, double *dDeltaXi, rvec *f_forw, rvec *f_back)
+                     gmx_rng_t rng, double *dDeltaXi, rvec *f_forw, rvec *f_back,
+                     int n_int) // PRUEBA
 {
   real phi = ir->dPhi;
   real delta_t = ir->delta_t;
@@ -619,7 +620,7 @@ void momentum_update(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms
      copy_rvecn(xi,    state->v, 0, state->natoms);
 
      do_constrain_first(fplog, constr, ir, mdatoms, state, f,
-                        graph, cr, nrnb, fr, top, shake_vir);
+                        graph, cr, nrnb, fr, top, shake_vir, n_int); // PRUEBA
 
      copy_rvecn(state->v,    xi, 0, state->natoms);
      copy_rvecn(xcopy, state->x, 0, state->natoms);
@@ -693,7 +694,8 @@ void momentum_update(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms
 void momentum_generate(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms *mdatoms, t_state *state,
                      rvec *f, t_graph *graph, t_commrec *cr, t_nrnb *nrnb,
                      t_forcerec *fr, gmx_localtop_t *top, tensor shake_vir,
-                     gmx_rng_t rng)
+                     gmx_rng_t rng,
+                     int n) // PRUEBA
 {
   /* Create a new random velocity vector on state->v */
   low_mspeed2(fplog, cr, ir->dTempi, mdatoms, state->v, rng);
@@ -705,7 +707,7 @@ void momentum_generate(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdato
   if (constr)
   {
      do_constrain_first(fplog, constr, ir, mdatoms, state, f,
-                        graph, cr, nrnb, fr, top, shake_vir);
+                        graph, cr, nrnb, fr, top, shake_vir, n); // PRUEBA
   }
 }
 

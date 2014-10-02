@@ -915,7 +915,8 @@ void do_constrain_first(FILE *fplog,gmx_constr_t constr,
                         t_inputrec *ir,t_mdatoms *md,
                         t_state *state,rvec *f,
                         t_graph *graph,t_commrec *cr,t_nrnb *nrnb,
-                        t_forcerec *fr, gmx_localtop_t *top, tensor shake_vir)
+                        t_forcerec *fr, gmx_localtop_t *top, tensor shake_vir,
+                        int n) // PRUEBA
 {
     int    i,m,start,end;
     gmx_large_int_t step;
@@ -947,7 +948,7 @@ void do_constrain_first(FILE *fplog,gmx_constr_t constr,
               ir,NULL,cr,step,0,md,
               state->x,state->x,NULL,
               state->box,state->lambda,&dvdlambda,
-              NULL,NULL,nrnb,econqCoord,ir->epc==epcMTTK,state->veta,state->veta);
+              NULL,NULL,nrnb,econqCoord,ir->epc==epcMTTK,state->veta,state->veta,n); // PRUEBA
     if (EI_VV(ir->eI) || EI_VNI(ir->eI)) 
     {
         /* constrain the inital velocity, and save it */
@@ -957,7 +958,7 @@ void do_constrain_first(FILE *fplog,gmx_constr_t constr,
                   ir,NULL,cr,step,0,md,
                   state->x,state->v,state->v,
                   state->box,state->lambda,&dvdlambda,
-                  NULL,NULL,nrnb,econqVeloc,ir->epc==epcMTTK,state->veta,state->veta);
+                  NULL,NULL,nrnb,econqVeloc,ir->epc==epcMTTK,state->veta,state->veta,n); // PRUEBA
     }
     /* constrain the inital velocities at t-dt/2 */
     if (EI_STATE_VELOCITY(ir->eI) && ir->eI!=eiVV && !EI_VNI(ir->eI))
@@ -986,7 +987,7 @@ void do_constrain_first(FILE *fplog,gmx_constr_t constr,
                   ir,NULL,cr,step,-1,md,
                   state->x,savex,NULL,
                   state->box,state->lambda,&dvdlambda,
-                  state->v,NULL,nrnb,econqCoord,ir->epc==epcMTTK,state->veta,state->veta);
+                  state->v,NULL,nrnb,econqCoord,ir->epc==epcMTTK,state->veta,state->veta,n); // PRUEBA
         
         for(i=start; i<end; i++) {
             for(m=0; m<DIM; m++) {

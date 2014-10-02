@@ -1579,7 +1579,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
         {
             /* Constrain the initial coordinates and velocities */
             do_constrain_first(fplog,constr,ir,mdatoms,state,f,
-                               graph,cr,nrnb,fr,top,shake_vir);
+                               graph,cr,nrnb,fr,top,shake_vir,n); // PRUEBA
         }
         if (vsite)
         {
@@ -1829,10 +1829,10 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
         } 
         else 
         {
-            bLastStep = (step_rel == ir->nsteps && stepIntegrator%n == 0); // PRUEBA
-            //t = t0 + step*(ir->delta_t); // PRUEBA
-            //t = t0 + step*(ir->delta_t*n); // PRUEBA
-            t = t0 + stepIntegrator*(ir->delta_t/n); // PRUEBA
+            bLastStep = (step_rel == ir->nsteps && stepIntegrator%n == 0); // New Integrators
+            //t = t0 + step*(ir->delta_t); // Original
+            //t = t0 + step*(ir->delta_t*n); // New Integrators - For the case when we consider VV delta_t for every integrator
+            t = t0 + stepIntegrator*(ir->delta_t/n); // New Integrators
         }
 
         if (ir->efep != efepNO)
@@ -2141,7 +2141,8 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                                       nrnb,wcycle,graph,groups,
                                       shellfc,fr,bBornRadii,t,mu_tot,
                                       state->natoms,&bConverged,vsite,
-                                      outf->fp_field);
+                                      outf->fp_field,
+                                      n); // PRUEBA
             tcount+=count;
 
             if (bConverged)
@@ -2200,7 +2201,8 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             update_coords(fplog,step,ir,mdatoms,state,
                           f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
                           ekind,M,wcycle,upd,bInitStep,etrtVELOCITY1,
-                          cr,nrnb,constr,&top->idef,enerd,total_vir,&intSteps,&intCoeffs);
+                          cr,nrnb,constr,&top->idef,enerd,total_vir,&intSteps,&intCoeffs,
+                          n); // PRUEBA
 
             if (bIterations)
             {
@@ -2246,7 +2248,8 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                     update_constraints(fplog,step,&dvdl,ir,ekind,mdatoms,state,graph,f,
                                        &top->idef,shake_vir,NULL,
                                        cr,nrnb,wcycle,upd,constr,
-                                       bInitStep,TRUE,bCalcEnerPres,vetanew);
+                                       bInitStep,TRUE,bCalcEnerPres,vetanew,
+                                       n); // PRUEBA
                     
                     if (!bOK && !bFFscan)
                     {
@@ -2512,7 +2515,8 @@ reload: // goto point for momentum update retrials
                  case curre:
                     /* momentum update, includes optional variable change to increase acceptance rate */
                     momentum_update(fplog, constr, ir, mdatoms, state, f, graph, cr, nrnb, fr, top, 
-                                    shake_vir, rng, &dDeltaXi, f_afterMD[forw1], f_afterMD[back1]);
+                                    shake_vir, rng, &dDeltaXi, f_afterMD[forw1], f_afterMD[back1],
+                                    n); // PRUEBA
                
                     backup_state(state, s_beforMD[curre], &f, &f_beforMD[curre]); 
 
@@ -2759,11 +2763,13 @@ reload: // goto point for momentum update retrials
               if (ir->met == metGHMC)
                  /* momentum update */
                  momentum_update(fplog, constr, ir, mdatoms, state, f, graph, cr, nrnb, fr, top, 
-                                 shake_vir, rng, &dDeltaXi, NULL, NULL);
+                                 shake_vir, rng, &dDeltaXi, NULL, NULL,
+                                 n); // PRUEBA
               else
                  /* momentum generate */
                  momentum_generate(fplog, constr, ir, mdatoms, state, f, graph,
-                                   cr, nrnb, fr, top, shake_vir, rng);
+                                   cr, nrnb, fr, top, shake_vir, rng,
+                                   n); // PRUEBA
 
               int start  = mdatoms->start;
               int homenr = mdatoms->homenr;
@@ -3102,7 +3108,8 @@ reload: // goto point for momentum update retrials
                     update_coords(fplog,step,ir,mdatoms,state,f,
                                   fr->bTwinRange && bNStList,fr->f_twin,fcd,
                                   ekind,M,wcycle,upd,FALSE,etrtVELOCITY2,
-                                  cr,nrnb,constr,&top->idef,enerd,total_vir,&intSteps,&intCoeffs);
+                                  cr,nrnb,constr,&top->idef,enerd,total_vir,&intSteps,&intCoeffs,
+                                  n); // PRUEBA
                 }
 
                 /* Above, initialize just copies ekinh into ekin,
@@ -3116,13 +3123,15 @@ reload: // goto point for momentum update retrials
                 }
                 
                 update_coords(fplog,step,ir,mdatoms,state,f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
-                              ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir,&intSteps,&intCoeffs);
+                              ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir,&intSteps,&intCoeffs,
+                              n); // PRUEBA
                 wallcycle_stop(wcycle,ewcUPDATE);
 
                 update_constraints(fplog,step,&dvdl,ir,ekind,mdatoms,state,graph,f,
                                    &top->idef,shake_vir,force_vir,
                                    cr,nrnb,wcycle,upd,constr,
-                                   bInitStep,FALSE,bCalcEnerPres,state->veta);
+                                   bInitStep,FALSE,bCalcEnerPres,state->veta,
+                                   n); // PRUEBA
                 
                 if (ir->eI==eiVVAK) 
                 {
@@ -3140,7 +3149,8 @@ reload: // goto point for momentum update retrials
                     copy_rvecn(cbuf,state->x,0,state->natoms);
 
                     update_coords(fplog,step,ir,mdatoms,state,f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
-                                  ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir,&intSteps,&intCoeffs);
+                                  ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir,&intSteps,&intCoeffs,
+                                  n); // PRUEBA
                     wallcycle_stop(wcycle,ewcUPDATE);
 
                     /* do we need an extra constraint here? just need to copy out of state->v to upd->xp? */
@@ -3152,7 +3162,8 @@ reload: // goto point for momentum update retrials
                                        &top->idef,tmp_vir,force_vir,
                                        cr,nrnb,wcycle,upd,NULL,
                                        bInitStep,FALSE,bCalcEnerPres,
-                                       state->veta);
+                                       state->veta,
+                                       n); // PRUEBA
                 }
                 if (!bOK && !bFFscan) 
                 {
@@ -3430,7 +3441,7 @@ reload: // goto point for momentum update retrials
             }
         }
         
-        if ((!bRerunMD || !rerun_fr.bStep) && stepIntegrator % n == 0) // PRUEBA
+        if ((!bRerunMD || !rerun_fr.bStep) && stepIntegrator % n == 0) // New Integrators
         {
             /* increase the MD step number */
             step++;

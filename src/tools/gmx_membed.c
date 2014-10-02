@@ -1893,9 +1893,57 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     int chkpt_ret;
 #endif
 
-    /* Additional parameters for the new integrators VNI */
-    int intSteps = 0;
-    double intCoeffs[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    /* PRUEBA */
+    /* New integrators VNI */
+    int    n = 0;
+    int    intSteps = 0;
+    double intCoeffs[9] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    double da1 = 0.0, da2 = 0.0, db1 = 0.0, db2 = 0.0, db3 = 0.0;
+    int    stepIntegrator = 0;
+    /* Define the values used for the integrators (VV or VNI) */
+    if (bVV || bVNI)
+    {
+        if (ir->eI==eiVV || ir->eI==eiVVAK)
+        {
+            n = 1;
+            intCoeffs[0] = 0.5, intCoeffs[1] = 1.0;
+        }
+        else if (ir->eI==eiVNI5)
+        {
+            n = 2;
+            // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
+            da1 = 0.5;
+            db1 = (3.0 - sqrt(3.0))/6.0, db2 = 1.0 - 2.0*db1;
+            intCoeffs[0] = db1, intCoeffs[1] = da1;
+            intCoeffs[2] = db2*0.5;
+            intCoeffs[3] = da1, intCoeffs[4] = db1;
+        }
+        else if (ir->eI==eiVNI7)
+        {
+            n = 3;
+            // [b1, a1, b2/2, a2, b2/2, a1, b1,  0,  0]
+            da1 = 0.29619504261126, da2 = 1.0 - 2.0*da1;
+            db1 = 0.11888010966548, db2 = 0.5 - db1;
+            intCoeffs[0] = db1, intCoeffs[1] = da1;
+            intCoeffs[2] = db2*0.5, intCoeffs[3] = da2;
+            intCoeffs[4] = db2*0.5, intCoeffs[5] = da1;
+            intCoeffs[6] = db1;
+        }
+        else if (ir->eI==eiVNI9)
+        {
+            n = 4;
+            // [b1, a1, b2/2, a2, b3/2, a2, b2/2, a1, b1]
+            da1 = 0.191667800000000000000, da2 = 0.5 - da1;
+            db1 = 0.071353913450279725904;
+            db2 = 0.268548791161230105820, db3 = 1.0 - 2.0*db1 - 2.0*db2;
+            intCoeffs[0] = db1, intCoeffs[1] = da1;
+            intCoeffs[2] = db2*0.5, intCoeffs[3] = da2;
+            intCoeffs[4] = db3*0.5, intCoeffs[5] = da2;
+            intCoeffs[6] = db2*0.5, intCoeffs[7] = da1;
+            intCoeffs[8] = db1;
+        }
+    }
+    /* PRUEBA */
 
     /* Check for special mdrun options */
     bRerunMD = (Flags & MD_RERUN);
@@ -2150,7 +2198,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
         {
             /* Constrain the initial coordinates and velocities */
             do_constrain_first(fplog,constr,ir,mdatoms,state,f,
-                               graph,cr,nrnb,fr,top,shake_vir);
+                               graph,cr,nrnb,fr,top,shake_vir,n); // PRUEBA
         }
         if (vsite)
         {
@@ -2646,7 +2694,8 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                                       nrnb,wcycle,graph,groups,
                                       shellfc,fr,bBornRadii,t,mu_tot,
                                       state->natoms,&bConverged,vsite,
-                                      outf->fp_field);
+                                      outf->fp_field,
+                                      n); // PRUEBA
             tcount+=count;
 
             if (bConverged)
@@ -2716,7 +2765,8 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                 update_coords(fplog,step,ir,mdatoms,state,
                               f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
                               ekind,M,wcycle,upd,bInitStep,etrtVELOCITY1,
-                              cr,nrnb,constr,&top->idef,enerd,total_vir,intSteps,intCoeffs);
+                              cr,nrnb,constr,&top->idef,enerd,total_vir,intSteps,intCoeffs,
+                              n); // PRUEBA
 
                 if (bIterations)
                 {
@@ -2762,7 +2812,8 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                     update_constraints(fplog,step,&dvdl,ir,ekind,mdatoms,state,graph,f,
                                        &top->idef,shake_vir,NULL,
                                        cr,nrnb,wcycle,upd,constr,
-                                       bInitStep,TRUE,bCalcEnerPres,vetanew);
+                                       bInitStep,TRUE,bCalcEnerPres,vetanew,
+                                       n); // PRUEBA
 
                     if (!bOK && !bFFscan)
                     {
@@ -3140,7 +3191,8 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
 		{
 		    /* velocity half-step update */
 		    update_coords(fplog,step,ir,mdatoms,state,f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
-				  ekind,M,wcycle,upd,FALSE,etrtVELOCITY2,cr,nrnb,constr,&top->idef,enerd,total_vir,intSteps,intCoeffs);
+				  ekind,M,wcycle,upd,FALSE,etrtVELOCITY2,cr,nrnb,constr,&top->idef,enerd,total_vir,intSteps,intCoeffs,
+                                  n); // PRUEBA
 		}
 
                 /* Above, initialize just copies ekinh into ekin,
@@ -3154,13 +3206,15 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                 }
 
                 update_coords(fplog,step,ir,mdatoms,state,f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
-                              ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir,intSteps,intCoeffs);
+                              ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir,intSteps,intCoeffs,
+                              n); // PRUEBA
                 wallcycle_stop(wcycle,ewcUPDATE);
 
                 update_constraints(fplog,step,&dvdl,ir,ekind,mdatoms,state,graph,f,
                                    &top->idef,shake_vir,force_vir,
                                    cr,nrnb,wcycle,upd,constr,
-                                   bInitStep,FALSE,bCalcEnerPres,state->veta);
+                                   bInitStep,FALSE,bCalcEnerPres,state->veta,
+                                   n); // PRUEBA
 
                 if (ir->eI==eiVVAK)
                 {
@@ -3178,7 +3232,8 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                     copy_rvecn(cbuf,state->x,0,state->natoms);
 
                     update_coords(fplog,step,ir,mdatoms,state,f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
-                                  ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir,intSteps,intCoeffs);
+                                  ekind,M,wcycle,upd,bInitStep,etrtPOSITION,cr,nrnb,constr,&top->idef,enerd,total_vir,intSteps,intCoeffs,
+                                  n); // PRUEBA
                     wallcycle_stop(wcycle,ewcUPDATE);
 
                     /* do we need an extra constraint here? just need to copy out of state->v to upd->xp? */
@@ -3189,7 +3244,8 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                     update_constraints(fplog,step,&dvdl,ir,ekind,mdatoms,state,graph,f,
                                        &top->idef,tmp_vir,force_vir,
                                        cr,nrnb,wcycle,upd,NULL,
-                                       bInitStep,FALSE,bCalcEnerPres,state->veta);
+                                       bInitStep,FALSE,bCalcEnerPres,state->veta,
+                                       n); // PRUEBA
                 }
                 if (!bOK && !bFFscan)
                 {

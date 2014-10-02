@@ -1,0 +1,20 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/BCAMATH/mfernandez/reduced-flipping-GSHMC/src/tools/g_bundle.c
+config.h
+-
+gmx_ana.h
+-
+
+include/gmx_ana.h
+
+src/config.h
+swindirect.h
+src/swindirect.h
+

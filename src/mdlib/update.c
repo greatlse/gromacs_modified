@@ -1159,7 +1159,8 @@ static void combine_forces(int nstlist,
                            t_commrec *cr,gmx_large_int_t step,t_state *state,
                            int start,int nrend,
                            rvec f[],rvec f_lr[],
-                           t_nrnb *nrnb)
+                           t_nrnb *nrnb,
+                           int n) // PRUEBA
 {
     int i,d,nm1;
 
@@ -1178,7 +1179,7 @@ static void combine_forces(int nstlist,
         /* MRS -- need to make sure this works with trotter integration -- the constraint calls may not be right.*/
         constrain(NULL,FALSE,FALSE,constr,idef,ir,NULL,cr,step,0,md,
                   state->x,f_lr,f_lr,state->box,state->lambda,NULL,
-                  NULL,NULL,nrnb,econqForce,ir->epc==epcMTTK,state->veta,state->veta);
+                  NULL,NULL,nrnb,econqForce,ir->epc==epcMTTK,state->veta,state->veta,n); // PRUEBA
     }
     
     /* Add nstlist-1 times the LR force to the sum of both forces
@@ -1348,7 +1349,8 @@ void update_constraints(FILE *fplog,
                         gmx_bool bInitStep,
                         gmx_bool bFirstHalf,
                         gmx_bool bCalcVir,
-                        real vetanew) 
+                        real vetanew,
+                        int n_int) // PRUEBA
 {
     gmx_bool bExtended,bTrotter,bLastStep,bLog=FALSE,bEner=FALSE,bDoConstr=FALSE;
     double dt;
@@ -1400,7 +1402,8 @@ should be reformulated as a velocity verlet method, since it has two parts */
                       state->x,state->v,state->v,
                       state->box,state->lambda,dvdlambda,
                       NULL,bCalcVir ? &vir_con : NULL,nrnb,econqVeloc,
-                      inputrec->epc==epcMTTK,state->veta,vetanew);
+                      inputrec->epc==epcMTTK,state->veta,vetanew,
+                      n_int); // PRUEBA
         }
         else
         {
@@ -1409,7 +1412,8 @@ should be reformulated as a velocity verlet method, since it has two parts */
                       state->x,xprime,NULL,
                       state->box,state->lambda,dvdlambda,
                       state->v,bCalcVir ? &vir_con : NULL ,nrnb,econqCoord,
-                      inputrec->epc==epcMTTK,state->veta,state->veta);
+                      inputrec->epc==epcMTTK,state->veta,state->veta,
+                      n_int); // PRUEBA
         }
         wallcycle_stop(wcycle,ewcCONSTR);
         
@@ -1468,7 +1472,8 @@ should be reformulated as a velocity verlet method, since it has two parts */
                       inputrec,NULL,cr,step,1,md,
                       state->x,xprime,NULL,
                       state->box,state->lambda,dvdlambda,
-                      NULL,NULL,nrnb,econqCoord,FALSE,0,0);
+                      NULL,NULL,nrnb,econqCoord,FALSE,0,0,
+                      n_int); // PRUEBA
             wallcycle_stop(wcycle,ewcCONSTR);
         }
     }
@@ -1646,7 +1651,8 @@ void update_coords(FILE *fplog,
                    gmx_enerdata_t *enerd,
                    tensor total_vir,
                    int *intSteps,
-                   double *intCoeffs)
+                   double *intCoeffs,
+                   int n_int) // PRUEBA
 {
     gmx_bool bExtended,bNH,bPR,bTrotter,bLastStep,bLog=FALSE,bEner=FALSE;
     double dt,alpha,dt_int;
@@ -1700,7 +1706,8 @@ void update_coords(FILE *fplog,
 */
         /* is this correct in the new construction? MRS */
         combine_forces(inputrec->nstlist,constr,inputrec,md,idef,cr,step,state,
-                       start,nrend,f,f_lr,nrnb);
+                       start,nrend,f,f_lr,nrnb,
+                       n_int); // PRUEBA
         force = f_lr;
     }
     else
@@ -1826,7 +1833,7 @@ void update_coords(FILE *fplog,
         }
         break;
     case (eiVNI5):
-        dt_int = 1*dt; // PRUEBA
+        dt_int = 1*dt; // New Integrators - Prepared for testing with VV delta_t
         switch (UpdatePart) {
         case etrtVELOCITY1:
             if (step == 0)
@@ -1875,7 +1882,7 @@ void update_coords(FILE *fplog,
         }
         break;
     case (eiVNI7):
-        dt_int = 1*dt; // PRUEBA
+        dt_int = 1*dt; // New Integrators - Prepared for testing with VV delta_t
         switch (UpdatePart) {
         case etrtVELOCITY1:
             if (step == 0)
@@ -1927,7 +1934,7 @@ void update_coords(FILE *fplog,
         }
         break;
     case (eiVNI9):
-        dt_int = 1*dt; // PRUEBA
+        dt_int = 1*dt; // New Integrators - Prepared for testing with VV delta_t
         switch (UpdatePart) {
         case etrtVELOCITY1:
             if (step == 0)

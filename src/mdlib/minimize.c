@@ -265,7 +265,8 @@ void init_em(FILE *fplog,const char *title,
              t_graph **graph,t_mdatoms *mdatoms,gmx_global_stat_t *gstat,
              gmx_vsite_t *vsite,gmx_constr_t constr,
              int nfile,const t_filenm fnm[],
-             gmx_mdoutf_t **outf,t_mdebin **mdebin)
+             gmx_mdoutf_t **outf,t_mdebin **mdebin,
+             int n) // PRUEBA
 {
     int  start,homenr,i;
     real dvdlambda;
@@ -392,7 +393,7 @@ void init_em(FILE *fplog,const char *title,
                       ir,NULL,cr,-1,0,mdatoms,
                       ems->s.x,ems->s.x,NULL,ems->s.box,
                       ems->s.lambda,&dvdlambda,
-                      NULL,NULL,nrnb,econqCoord,FALSE,0,0);
+                      NULL,NULL,nrnb,econqCoord,FALSE,0,0,n); // PRUEBA
         }
     }
     
@@ -490,7 +491,8 @@ static void do_em_step(t_commrec *cr,t_inputrec *ir,t_mdatoms *md,
 		       em_state_t *ems1,real a,rvec *f,em_state_t *ems2,
 		       gmx_constr_t constr,gmx_localtop_t *top,
 		       t_nrnb *nrnb,gmx_wallcycle_t wcycle,
-		       gmx_large_int_t count)
+		       gmx_large_int_t count,
+                       int n) // PRUEBA
 
 {
   t_state *s1,*s2;
@@ -561,7 +563,7 @@ static void do_em_step(t_commrec *cr,t_inputrec *ir,t_mdatoms *md,
     constrain(NULL,TRUE,TRUE,constr,&top->idef,	
               ir,NULL,cr,count,0,md,
               s1->x,s2->x,NULL,s2->box,s2->lambda,
-              &dvdlambda,NULL,NULL,nrnb,econqCoord,FALSE,0,0);
+              &dvdlambda,NULL,NULL,nrnb,econqCoord,FALSE,0,0,n); // PRUEBA
     wallcycle_stop(wcycle,ewcCONSTR);
   }
 }
@@ -639,7 +641,8 @@ static void evaluate_energy(FILE *fplog,gmx_bool bVerbose,t_commrec *cr,
                             t_graph *graph,t_mdatoms *mdatoms,
                             t_forcerec *fr,rvec mu_tot,
                             gmx_enerdata_t *enerd,tensor vir,tensor pres,
-                            gmx_large_int_t count,gmx_bool bFirst)
+                            gmx_large_int_t count,gmx_bool bFirst,
+                            int n) // PRUEBA
 {
   real t;
   gmx_bool bNS;
@@ -732,7 +735,7 @@ static void evaluate_energy(FILE *fplog,gmx_bool bVerbose,t_commrec *cr,
     constrain(NULL,FALSE,FALSE,constr,&top->idef,
               inputrec,NULL,cr,count,0,mdatoms,
               ems->s.x,ems->f,ems->f,ems->s.box,ems->s.lambda,&dvdl,
-              NULL,&shake_vir,nrnb,econqForceDispl,FALSE,0,0);
+              NULL,&shake_vir,nrnb,econqForceDispl,FALSE,0,0,n); // PRUEBA
     if (fr->bSepDVDL && fplog)
       fprintf(fplog,sepdvdlformat,"Constraints",t,dvdl);
     enerd->term[F_DHDL_CON] += dvdl;
@@ -919,7 +922,8 @@ double do_cg(FILE *fplog,t_commrec *cr,
   init_em(fplog,CG,cr,inputrec,
           state_global,top_global,s_min,&top,&f,&f_global,
           nrnb,mu_tot,fr,&enerd,&graph,mdatoms,&gstat,vsite,constr,
-          nfile,fnm,&outf,&mdebin);
+          nfile,fnm,&outf,&mdebin,
+          1); // PRUEBA
   
   /* Print to log file */
   print_em_start(fplog,cr,runtime,wcycle,CG);
@@ -940,7 +944,8 @@ double do_cg(FILE *fplog,t_commrec *cr,
 		  state_global,top_global,s_min,top,
 		  inputrec,nrnb,wcycle,gstat,
 		  vsite,constr,fcd,graph,mdatoms,fr,
-		  mu_tot,enerd,vir,pres,-1,TRUE);
+		  mu_tot,enerd,vir,pres,-1,TRUE,
+                  1); // PRUEBA
   where();
 
   if (MASTER(cr)) {
@@ -1086,7 +1091,8 @@ double do_cg(FILE *fplog,t_commrec *cr,
 
     /* Take a trial step (new coords in s_c) */
     do_em_step(cr,inputrec,mdatoms,s_min,c,s_min->s.cg_p,s_c,
-	       constr,top,nrnb,wcycle,-1);
+	       constr,top,nrnb,wcycle,-1,
+               1); // PRUEBA
     
     neval++;
     /* Calculate energy for the trial step */
@@ -1094,7 +1100,8 @@ double do_cg(FILE *fplog,t_commrec *cr,
 		    state_global,top_global,s_c,top,
 		    inputrec,nrnb,wcycle,gstat,
 		    vsite,constr,fcd,graph,mdatoms,fr,
-		    mu_tot,enerd,vir,pres,-1,FALSE);
+		    mu_tot,enerd,vir,pres,-1,FALSE,
+                    1); // PRUEBA
     
     /* Calc derivative along line */
     p  = s_c->s.cg_p;
@@ -1173,7 +1180,8 @@ double do_cg(FILE *fplog,t_commrec *cr,
 
 	/* Take a trial step to this new point - new coords in s_b */
 	do_em_step(cr,inputrec,mdatoms,s_min,b,s_min->s.cg_p,s_b,
-		   constr,top,nrnb,wcycle,-1);
+		   constr,top,nrnb,wcycle,-1,
+                   1); // PRUEBA
 	
 	neval++;
 	/* Calculate energy for the trial step */
@@ -1181,7 +1189,8 @@ double do_cg(FILE *fplog,t_commrec *cr,
 			state_global,top_global,s_b,top,
 			inputrec,nrnb,wcycle,gstat,
 			vsite,constr,fcd,graph,mdatoms,fr,
-			mu_tot,enerd,vir,pres,-1,FALSE);
+			mu_tot,enerd,vir,pres,-1,FALSE,
+                        1); // PRUEBA
 	
 	/* p does not change within a step, but since the domain decomposition
 	 * might change, we have to use cg_p of s_b here.
@@ -1471,7 +1480,8 @@ double do_lbfgs(FILE *fplog,t_commrec *cr,
   init_em(fplog,LBFGS,cr,inputrec,
           state,top_global,&ems,&top,&f,&f_global,
           nrnb,mu_tot,fr,&enerd,&graph,mdatoms,&gstat,vsite,constr,
-          nfile,fnm,&outf,&mdebin);
+          nfile,fnm,&outf,&mdebin,
+          1); // PRUEBA
   /* Do_lbfgs is not completely updated like do_steep and do_cg,
    * so we free some memory again.
    */
@@ -1521,7 +1531,8 @@ double do_lbfgs(FILE *fplog,t_commrec *cr,
 		  state,top_global,&ems,top,
 		  inputrec,nrnb,wcycle,gstat,
 		  vsite,constr,fcd,graph,mdatoms,fr,
-		  mu_tot,enerd,vir,pres,-1,TRUE);
+		  mu_tot,enerd,vir,pres,-1,TRUE,
+                  1); // PRUEBA
   where();
 	
   if (MASTER(cr)) {
@@ -1676,7 +1687,8 @@ double do_lbfgs(FILE *fplog,t_commrec *cr,
 		    state,top_global,&ems,top,
 		    inputrec,nrnb,wcycle,gstat,
 		    vsite,constr,fcd,graph,mdatoms,fr,
-		    mu_tot,enerd,vir,pres,step,FALSE);
+		    mu_tot,enerd,vir,pres,step,FALSE,
+                    1); // PRUEBA
     EpotC = ems.epot;
     
     /* Calc derivative along line */
@@ -1754,7 +1766,8 @@ double do_lbfgs(FILE *fplog,t_commrec *cr,
 			state,top_global,&ems,top,
 			inputrec,nrnb,wcycle,gstat,
 			vsite,constr,fcd,graph,mdatoms,fr,
-			mu_tot,enerd,vir,pres,step,FALSE);
+			mu_tot,enerd,vir,pres,step,FALSE,
+                        1); // PRUEBA
 	EpotB = ems.epot;
 	
 	fnorm = ems.fnorm;
@@ -2065,7 +2078,8 @@ double do_steep(FILE *fplog,t_commrec *cr,
   init_em(fplog,SD,cr,inputrec,
           state_global,top_global,s_try,&top,&f,&f_global,
           nrnb,mu_tot,fr,&enerd,&graph,mdatoms,&gstat,vsite,constr,
-          nfile,fnm,&outf,&mdebin);
+          nfile,fnm,&outf,&mdebin,
+          1); // PRUEBA
 	
   /* Print to log file  */
   print_em_start(fplog,cr,runtime,wcycle,SD);
@@ -2100,14 +2114,16 @@ double do_steep(FILE *fplog,t_commrec *cr,
     /* set new coordinates, except for first step */
     if (count > 0) {
       do_em_step(cr,inputrec,mdatoms,s_min,stepsize,s_min->f,s_try,
-		 constr,top,nrnb,wcycle,count);
+		 constr,top,nrnb,wcycle,count,
+                 1); // PRUEBA
     }
     
     evaluate_energy(fplog,bVerbose,cr,
 		    state_global,top_global,s_try,top,
 		    inputrec,nrnb,wcycle,gstat,
 		    vsite,constr,fcd,graph,mdatoms,fr,
-		    mu_tot,enerd,vir,pres,count,count==0);
+		    mu_tot,enerd,vir,pres,count,count==0,
+                    1); // PRUEBA
 	 
     if (MASTER(cr))
       print_ebin_header(fplog,count,count,s_try->s.lambda);
@@ -2280,7 +2296,8 @@ double do_nm(FILE *fplog,t_commrec *cr,
             state_global,top_global,state_work,&top,
             &f,&f_global,
             nrnb,mu_tot,fr,&enerd,&graph,mdatoms,&gstat,vsite,constr,
-            nfile,fnm,&outf,NULL);
+            nfile,fnm,&outf,NULL,
+            1); // PRUEBA
     
     natoms = top_global->natoms;
     snew(fneg,natoms);
@@ -2361,7 +2378,8 @@ double do_nm(FILE *fplog,t_commrec *cr,
                     state_global,top_global,state_work,top,
                     inputrec,nrnb,wcycle,gstat,
                     vsite,constr,fcd,graph,mdatoms,fr,
-                    mu_tot,enerd,vir,pres,-1,TRUE);
+                    mu_tot,enerd,vir,pres,-1,TRUE,
+                    1); // PRUEBA
     cr->nnodes = nnodes;
 
     /* if forces are not small, warn user */
@@ -2404,7 +2422,8 @@ double do_nm(FILE *fplog,t_commrec *cr,
                             state_global,top_global,state_work,top,
                             inputrec,nrnb,wcycle,gstat,
                             vsite,constr,fcd,graph,mdatoms,fr,
-                            mu_tot,enerd,vir,pres,atom*2,FALSE);
+                            mu_tot,enerd,vir,pres,atom*2,FALSE,
+                            1); // PRUEBA
 			
             for(i=0; i<natoms; i++)
             {
@@ -2417,7 +2436,8 @@ double do_nm(FILE *fplog,t_commrec *cr,
                             state_global,top_global,state_work,top,
                             inputrec,nrnb,wcycle,gstat,
                             vsite,constr,fcd,graph,mdatoms,fr,
-                            mu_tot,enerd,vir,pres,atom*2+1,FALSE);
+                            mu_tot,enerd,vir,pres,atom*2+1,FALSE,
+                            1); // PRUEBA
             cr->nnodes = nnodes;
 
             /* x is restored to original */
