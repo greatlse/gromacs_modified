@@ -110,7 +110,8 @@ void update_coords(FILE         *fplog,
                           gmx_enerdata_t *enerd,
                           tensor       total_vir,
                           int          *intSteps,
-                          double       *intCoeffs);
+                          double       *intCoeffs,
+                          int          n); // PRUEBA
 
 /* Return TRUE if OK, FALSE in case of Shake Error */
 
@@ -134,7 +135,8 @@ void update_constraints(FILE         *fplog,
 			       gmx_bool         bInitStep,
 			       gmx_bool         bFirstHalf,
 			       gmx_bool         bCalcVir,
-			       real         vetanew);
+			       real         vetanew,
+                               int          n); // PRUEBA
 
 /* Return TRUE if OK, FALSE in case of Shake Error */
 

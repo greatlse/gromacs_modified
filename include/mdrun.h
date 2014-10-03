@@ -325,7 +325,8 @@ void do_constrain_first(FILE *log,gmx_constr_t constr,
 			       t_inputrec *inputrec,t_mdatoms *md,
 			       t_state *state,rvec *f,
 			       t_graph *graph,t_commrec *cr,t_nrnb *nrnb,
-			       t_forcerec *fr, gmx_localtop_t *top, tensor shake_vir); 
+			       t_forcerec *fr, gmx_localtop_t *top, tensor shake_vir,
+                               int n); // PRUEBA
 			  
 void dynamic_load_balancing(gmx_bool bVerbose,t_commrec *cr,real capacity[],
 				   int dimension,t_mdatoms *md,t_topology *top,
