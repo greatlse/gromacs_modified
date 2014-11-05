@@ -620,7 +620,8 @@ void momentum_update(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms
      copy_rvecn(xi,    state->v, 0, state->natoms);
 
      do_constrain_first(fplog, constr, ir, mdatoms, state, f,
-                        graph, cr, nrnb, fr, top, shake_vir, n_int); // PRUEBA
+                        graph, cr, nrnb, fr, top, shake_vir,
+                        1); // PRUEBA
 
      copy_rvecn(state->v,    xi, 0, state->natoms);
      copy_rvecn(xcopy, state->x, 0, state->natoms);
@@ -707,7 +708,8 @@ void momentum_generate(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdato
   if (constr)
   {
      do_constrain_first(fplog, constr, ir, mdatoms, state, f,
-                        graph, cr, nrnb, fr, top, shake_vir, n); // PRUEBA
+                        graph, cr, nrnb, fr, top, shake_vir,
+                        1); // PRUEBA
   }
 }
 

@@ -1579,7 +1579,8 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
         {
             /* Constrain the initial coordinates and velocities */
             do_constrain_first(fplog,constr,ir,mdatoms,state,f,
-                               graph,cr,nrnb,fr,top,shake_vir,n); // PRUEBA
+                               graph,cr,nrnb,fr,top,shake_vir,
+                               1); // PRUEBA
         }
         if (vsite)
         {
@@ -1653,9 +1654,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
 
     /* Andersen barostat*/
     if (ir->epc == epcANDERSEN)
-    {
         state->q = state->vol0;
-    }
     /* Andersen barostat*/
     
     if (MASTER(cr))
@@ -3358,7 +3357,7 @@ reload: // goto point for momentum update retrials
                 
                 do_dr  = do_per_step(step,ir->nstdisreout);
                 do_or  = do_per_step(step,ir->nstorireout);
-                
+
                 print_ebin(outf->fp_ene,do_ene,do_dr,do_or,do_log?fplog:NULL,
                            step,t,
                            eprNORMAL,bCompact,mdebin,fcd,groups,&(ir->opts));
@@ -3445,6 +3444,8 @@ reload: // goto point for momentum update retrials
         {
             /* increase the MD step number */
             step++;
+            if (step == 1)
+               stepMD = 1;
             step_rel++;
         }
         
