@@ -109,8 +109,8 @@ void update_coords(FILE         *fplog,
 			  t_idef       *idef,
                           gmx_enerdata_t *enerd,
                           tensor       total_vir,
+                          int          *intSteps,
                           double       *intCoeffs,
-                          int          stepIntegrator,
                           int          n); // PRUEBA
 
 /* Return TRUE if OK, FALSE in case of Shake Error */
