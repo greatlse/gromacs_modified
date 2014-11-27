@@ -17,10 +17,10 @@ CFLAGS=" -O3 "
 #F77="ifort"
 
 
-#make clean
+make clean
 
 cmake -D FFTW3_INCLUDE_DIR=/usr/include \
-      -D FFTW3_LIBRARIES=/usr/lib/libfftw3.a \
+      -D FFTW3_LIBRARIES=/usr/lib/x86_64-linux-gnu/libfftw3.a \
       -D GMX_THREADS:BOOL=ON \
       -D CMAKE_BUILD_TYPE=Release \
       -D CMAKE_INSTALL_PREFIX=$GROMACS_HOME/exec/ \
