@@ -164,6 +164,7 @@ static void do_ac_core(int nframes,int nout,
   }
   else
      printf("*** GSHMC: WEIGHTS file not found. ***\n");
+
   /* *** GSHMC *** */
   
   for(j=0; (j<nout); j++)
@@ -771,6 +772,25 @@ void low_do_autocorr(const char *fn,const output_env_t oenv,const char *title,
   if (fp)
     ffclose(fp);
   sfree(fit);
+
+
+  /* GSHMC: Accumulate integrated autocorrelation */
+  int j=0;
+  double dIACF = 0.0; // Integrated Autocorrelation Function
+  double dIACFabs = 0.0; // Integrated Autocorrelation Function using absolute values
+  for(i=0; i<nitem; i++)
+  {
+     dIACF = 0.0;
+     dIACFabs = 0.0;
+     for(j=0; j<nout; j++)
+     {
+        dIACF += c1[i][j];
+        dIACFabs += fabs(c1[i][j]);
+     }
+     printf("SS%d Integrated Autocorrelation Function IACF = %f \n", i, dIACF);
+     printf("SS%d Absolute Integrated Autocorrelation Function IACF = %f \n", i, dIACFabs);
+  }
+  /* GSHMC: Accumulate integrated autocorrelation */
 }
 
 static const char *Leg[]   = { NULL, "0", "1", "2", "3", NULL };
