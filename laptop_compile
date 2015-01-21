@@ -5,7 +5,7 @@ GROMACS_HOME=`(pwd)`
 
 #MPI_HOME="/opt/mpi/mpibull2-1.3.9-18.s/"
 MPI_HOME="/usr/"
-suff="_d_mpibull_gshmc"
+suff="_d_mpibull_gshmc_development"
 
 # CPPFLAGS="-I/software/fftw-3.2.2/include -I/$MPI_HOME/include" 
 MPICC="$MPI_HOME/bin/mpicc"
@@ -15,7 +15,6 @@ CFLAGS=" -O3 "
 #CXX="icpc"
 #CC="icc"
 #F77="ifort"
-
 
 make clean
 
@@ -28,9 +27,10 @@ cmake -D FFTW3_INCLUDE_DIR=/usr/include \
       -D GMX_DEFAULT_SUFFIX=OFF \
       -D GMX_BINARY_SUFFIX=$suff \
       -D GMX_LIBS_SUFFIX=$suff \
-      $GROMACS_HOME
+      $GROMACS_HOME \
+      -G"Eclipse CDT4 - Unix Makefiles"
 
-make -j 4
+make -j 2
 make install
 
  #cmake -D FFTW3_INCLUDE_DIR=/software/fftw-3.2.2/include \

@@ -1237,7 +1237,6 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
        gmx_bool bFlip = FALSE;
        /* New integrators VNI */
        int    n = 0;
-       int    intSteps = 0;
        double intCoeffs[9] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
        double da1 = 0.0, da2 = 0.0, db1 = 0.0, db2 = 0.0, db3 = 0.0;
        int    stepIntegrator = 0;
@@ -1280,36 +1279,35 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
         else if (ir->eI==eiVNI5)
         {
             n = 2;
-            // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
+            // [b1, a1, b2, a1, b1,  0,  0,  0,  0]
             da1 = 0.5;
             db1 = (3.0 - sqrt(3.0))/6.0, db2 = 1.0 - 2.0*db1;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
-            //intCoeffs[2] = db2*0.5;
             intCoeffs[2] = db2;
             intCoeffs[3] = da1, intCoeffs[4] = db1;
         }
         else if (ir->eI==eiVNI7)
         {
             n = 3;
-            // [b1, a1, b2/2, a2, b2/2, a1, b1,  0,  0]
+            // [b1, a1, b2, a2, b2, a1, b1,  0,  0]
             da1 = 0.29619504261126, da2 = 1.0 - 2.0*da1;
             db1 = 0.11888010966548, db2 = 0.5 - db1;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
-            intCoeffs[2] = db2*0.5, intCoeffs[3] = da2;
-            intCoeffs[4] = db2*0.5, intCoeffs[5] = da1;
+            intCoeffs[2] = db2, intCoeffs[3] = da2;
+            intCoeffs[4] = db2, intCoeffs[5] = da1;
             intCoeffs[6] = db1;
         }
         else if (ir->eI==eiVNI9)
         {
             n = 4;
-            // [b1, a1, b2/2, a2, b3/2, a2, b2/2, a1, b1]
+            // [b1, a1, b2, a2, b3, a2, b2, a1, b1]
             da1 = 0.191667800000000000000, da2 = 0.5 - da1;
             db1 = 0.071353913450279725904;
             db2 = 0.268548791161230105820, db3 = 1.0 - 2.0*db1 - 2.0*db2;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
-            intCoeffs[2] = db2*0.5, intCoeffs[3] = da2;
-            intCoeffs[4] = db3*0.5, intCoeffs[5] = da2;
-            intCoeffs[6] = db2*0.5, intCoeffs[7] = da1;
+            intCoeffs[2] = db2, intCoeffs[3] = da2;
+            intCoeffs[4] = db3, intCoeffs[5] = da2;
+            intCoeffs[6] = db2, intCoeffs[7] = da1;
             intCoeffs[8] = db1;
         }
     }
@@ -2033,7 +2031,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             }
         }
 
-        if (MASTER(cr) && do_log && !bFFscan)
+        if (MASTER(cr) && do_log && !bFFscan && (stepIntegrator == 0 || stepIntegrator%n == 0)) // New Integrator
         {
             print_ebin_header(fplog,step,t,state->lambda);
         }
@@ -2200,7 +2198,6 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             update_coords(fplog,step,ir,mdatoms,state,
                           f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
                           ekind,M,wcycle,upd,bInitStep,etrtVELOCITY1,
-                          //cr,nrnb,constr,&top->idef,enerd,total_vir,&intSteps,&intCoeffs,
                           cr,nrnb,constr,&top->idef,enerd,total_vir,
                           &intCoeffs,stepIntegrator,n);
 
@@ -2515,8 +2512,7 @@ reload: // goto point for momentum update retrials
                  case curre:
                     /* momentum update, includes optional variable change to increase acceptance rate */
                     momentum_update(fplog, constr, ir, mdatoms, state, f, graph, cr, nrnb, fr, top, 
-                                    shake_vir, rng, &dDeltaXi, f_afterMD[forw1], f_afterMD[back1],
-                                    n);
+                                    shake_vir, rng, &dDeltaXi, f_afterMD[forw1], f_afterMD[back1]);
                
                     backup_state(state, s_beforMD[curre], &f, &f_beforMD[curre]); 
 
@@ -2763,13 +2759,11 @@ reload: // goto point for momentum update retrials
               if (ir->met == metGHMC)
                  /* momentum update */
                  momentum_update(fplog, constr, ir, mdatoms, state, f, graph, cr, nrnb, fr, top, 
-                                 shake_vir, rng, &dDeltaXi, NULL, NULL,
-                                 n);
+                                 shake_vir, rng, &dDeltaXi, NULL, NULL);
               else
                  /* momentum generate */
                  momentum_generate(fplog, constr, ir, mdatoms, state, f, graph,
-                                   cr, nrnb, fr, top, shake_vir, rng,
-                                   n);
+                                   cr, nrnb, fr, top, shake_vir, rng);
 
               int start  = mdatoms->start;
               int homenr = mdatoms->homenr;
@@ -3108,7 +3102,6 @@ reload: // goto point for momentum update retrials
                     update_coords(fplog,step,ir,mdatoms,state,f,
                                   fr->bTwinRange && bNStList,fr->f_twin,fcd,
                                   ekind,M,wcycle,upd,FALSE,etrtVELOCITY2,
-                                  //cr,nrnb,constr,&top->idef,enerd,total_vir,&intSteps,&intCoeffs,
                                   cr,nrnb,constr,&top->idef,enerd,total_vir,
                                   &intCoeffs,stepIntegrator,n);
                 }
@@ -3125,7 +3118,6 @@ reload: // goto point for momentum update retrials
                 
                 update_coords(fplog,step,ir,mdatoms,state,f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
                               ekind,M,wcycle,upd,bInitStep,etrtPOSITION,
-                              //cr,nrnb,constr,&top->idef,enerd,total_vir,&intSteps,&intCoeffs,
                               cr,nrnb,constr,&top->idef,enerd,total_vir,
                               &intCoeffs,stepIntegrator,n);
                 wallcycle_stop(wcycle,ewcUPDATE);
@@ -3153,7 +3145,6 @@ reload: // goto point for momentum update retrials
 
                     update_coords(fplog,step,ir,mdatoms,state,f,fr->bTwinRange && bNStList,fr->f_twin,fcd,
                                   ekind,M,wcycle,upd,bInitStep,etrtPOSITION,
-                                  //cr,nrnb,constr,&top->idef,enerd,total_vir,&intSteps,&intCoeffs,
                                   cr,nrnb,constr,&top->idef,enerd,total_vir,
                                   &intCoeffs,stepIntegrator,n);
                     wallcycle_stop(wcycle,ewcUPDATE);
@@ -3364,9 +3355,12 @@ reload: // goto point for momentum update retrials
                 do_dr  = do_per_step(step,ir->nstdisreout);
                 do_or  = do_per_step(step,ir->nstorireout);
 
-                print_ebin(outf->fp_ene,do_ene,do_dr,do_or,do_log?fplog:NULL,
-                           step,t,
-                           eprNORMAL,bCompact,mdebin,fcd,groups,&(ir->opts));
+                if(stepIntegrator == 0 || stepIntegrator%n == 0) // New Integrator
+                {
+                    print_ebin(outf->fp_ene,do_ene,do_dr,do_or,do_log?fplog:NULL,
+                               step,t,
+                               eprNORMAL,bCompact,mdebin,fcd,groups,&(ir->opts));
+                }
             }
             if (ir->ePull != epullNO)
             {

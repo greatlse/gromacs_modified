@@ -1160,7 +1160,7 @@ static void combine_forces(int nstlist,
                            int start,int nrend,
                            rvec f[],rvec f_lr[],
                            t_nrnb *nrnb,
-                           int n) // PRUEBA
+                           int n) // CONSTRAINING
 {
     int i,d,nm1;
 
@@ -1179,7 +1179,7 @@ static void combine_forces(int nstlist,
         /* MRS -- need to make sure this works with trotter integration -- the constraint calls may not be right.*/
         constrain(NULL,FALSE,FALSE,constr,idef,ir,NULL,cr,step,0,md,
                   state->x,f_lr,f_lr,state->box,state->lambda,NULL,
-                  NULL,NULL,nrnb,econqForce,ir->epc==epcMTTK,state->veta,state->veta,n); // PRUEBA
+                  NULL,NULL,nrnb,econqForce,ir->epc==epcMTTK,state->veta,state->veta,n); // CONSTRAINING
     }
     
     /* Add nstlist-1 times the LR force to the sum of both forces
@@ -1350,7 +1350,7 @@ void update_constraints(FILE *fplog,
                         gmx_bool bFirstHalf,
                         gmx_bool bCalcVir,
                         real vetanew,
-                        int n_int) // PRUEBA
+                        int n_int) // CONSTRAINING
 {
     gmx_bool bExtended,bTrotter,bLastStep,bLog=FALSE,bEner=FALSE,bDoConstr=FALSE;
     double dt;
@@ -1403,7 +1403,7 @@ should be reformulated as a velocity verlet method, since it has two parts */
                       state->box,state->lambda,dvdlambda,
                       NULL,bCalcVir ? &vir_con : NULL,nrnb,econqVeloc,
                       inputrec->epc==epcMTTK,state->veta,vetanew,
-                      n_int); // PRUEBA
+                      n_int); // CONSTRAINING
         }
         else
         {
@@ -1413,7 +1413,7 @@ should be reformulated as a velocity verlet method, since it has two parts */
                       state->box,state->lambda,dvdlambda,
                       state->v,bCalcVir ? &vir_con : NULL ,nrnb,econqCoord,
                       inputrec->epc==epcMTTK,state->veta,state->veta,
-                      n_int); // PRUEBA
+                      n_int); // CONSTRAINING
         }
         wallcycle_stop(wcycle,ewcCONSTR);
         
@@ -1473,7 +1473,7 @@ should be reformulated as a velocity verlet method, since it has two parts */
                       state->x,xprime,NULL,
                       state->box,state->lambda,dvdlambda,
                       NULL,NULL,nrnb,econqCoord,FALSE,0,0,
-                      n_int); // PRUEBA
+                      n_int); // CONSTRAINING
             wallcycle_stop(wcycle,ewcCONSTR);
         }
     }
@@ -1650,13 +1650,12 @@ void update_coords(FILE *fplog,
                    t_idef *idef,
                    gmx_enerdata_t *enerd,
                    tensor total_vir,
-                   //int *intSteps,
                    double *intCoeffs,
                    int stepIntegrator,
-                   int n_int) // PRUEBA
+                   int n_int)
 {
     gmx_bool bExtended,bNH,bPR,bTrotter,bLastStep,bLog=FALSE,bEner=FALSE;
-    double dt,alpha,dt_int;
+    double dt,alpha;
     real *imass,*imassin;
     rvec *force;
     real dt_1;
@@ -1708,7 +1707,7 @@ void update_coords(FILE *fplog,
         /* is this correct in the new construction? MRS */
         combine_forces(inputrec->nstlist,constr,inputrec,md,idef,cr,step,state,
                        start,nrend,f,f_lr,nrnb,
-                       n_int); // PRUEBA
+                       n_int); // CONSTRAINING
         force = f_lr;
     }
     else
@@ -1836,16 +1835,8 @@ void update_coords(FILE *fplog,
     case (eiVNI5):
         switch (UpdatePart) {
         case etrtVELOCITY1:
-            //if (*intSteps == 0)
-            //   coeffVel1 = 0.0;
-            //else
-            //{
-            //   coeffVel1 = *intSteps+1;
-            //   *intSteps += 1;
-            //}
             coeffVel1 = 0 + 2*(stepIntegrator%n_int);
             /* Velocities */
-//printf("VELOCITY1 = %f\n",intCoeffs[coeffVel1]); // MARIO
             do_update_vv_vel(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
@@ -1854,14 +1845,9 @@ void update_coords(FILE *fplog,
                              state,force,inputrec->dMuMass,inputrec->dAlphaPress,
                              bExtended,alpha,
                              intCoeffs[coeffVel1]);
-            //if (*intSteps == 4)
-            //   *intSteps = 0;
             break;
         case etrtVELOCITY2:
-            //coeffVel2 = 0;
             /* Velocities */
-//printf("VELOCITY2 = %f\n",intCoeffs[coeffVel2]); // MARIO
-//printf("VELOCITY2 = %f\n",intCoeffs[0]); // MARIO
             do_update_vv_vel(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
@@ -1869,15 +1855,10 @@ void update_coords(FILE *fplog,
                              md->cFREEZE,md->cACC,
                              state,force,inputrec->dMuMass,inputrec->dAlphaPress,
                              bExtended,alpha,
-                             //intCoeffs[coeffVel2]);
                              intCoeffs[0]);
             break;
         case etrtPOSITION:
-            //coeffPos = *intSteps+1;
-            //*intSteps += 1;
             /* Positions */
-//printf("POSITION = %f\n",intCoeffs[coeffPos]); // MARIO
-//printf("POSITION = %f\n",intCoeffs[1]); // MARIO
             do_update_vv_pos(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
@@ -1888,111 +1869,83 @@ void update_coords(FILE *fplog,
             break;
         }
         break;
-//    case (eiVNI7):
-//        dt_int = 1*dt; // New Integrators - Prepared for testing with VV delta_t
-//        switch (UpdatePart) {
-//        case etrtVELOCITY1:
-//            if (step == 0)
-//            {
-//               coeffVel1 = 0.0;
-//            }
-//            else
-//               coeffVel1 = 2.0*(*intSteps) + 2.0; 
-//            /* Velocities */
-//            do_update_vv_vel(start,nrend,dt_int,
-//                             ekind->tcstat,ekind->grpstat,
-//                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
-//                             md->invmass,md->ptype,
-//                             md->cFREEZE,md->cACC,
-//                             state,force,inputrec->dMuMass,inputrec->dAlphaPress,
-//                             bExtended,alpha,
-//                             intCoeffs[coeffVel1]);
-//            if (*intSteps == 2 | step == 0)
-//               *intSteps = 0;
-//            else if (*intSteps == 0)
-//               *intSteps = 1;
-//            else if (*intSteps == 1)
-//               *intSteps = 2;
-//            break;
-//        case etrtVELOCITY2:
-//            coeffVel2 = 2.0*(*intSteps);
-//            /* Velocities */
-//            do_update_vv_vel(start,nrend,dt_int,
-//                             ekind->tcstat,ekind->grpstat,
-//                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
-//                             md->invmass,md->ptype,
-//                             md->cFREEZE,md->cACC,
-//                             state,force,inputrec->dMuMass,inputrec->dAlphaPress,
-//                             bExtended,alpha,
-//                             intCoeffs[coeffVel2]);
-//            break;
-//        case etrtPOSITION:
-//            coeffPos = 2.0*(*intSteps) + 1.0;
-            /* Positions */
-//            do_update_vv_pos(start,nrend,dt_int,
-//                             ekind->tcstat,ekind->grpstat,
-//                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
-//                             md->invmass,md->ptype,md->cFREEZE,
-//                             state,xprime,force,inputrec->dMuMass,
-//                             bExtended,alpha,
-//                             intCoeffs[coeffPos]);
-//            break;
-//        }
-//        break;
-//    case (eiVNI9):
-//        dt_int = 1*dt; // New Integrators
-//        switch (UpdatePart) {
-//        case etrtVELOCITY1:
-//            if (step == 0)
-//            {
-//               coeffVel1 = 0.0;
-//            }
-//            else
-//               coeffVel1 = 2.0*(*intSteps) + 2.0; 
+    case (eiVNI7):
+        switch (UpdatePart) {
+        case etrtVELOCITY1:
+            coeffVel1 = 0 + 2*(stepIntegrator%n_int);
             /* Velocities */
-//            do_update_vv_vel(start,nrend,dt_int,
-//                             ekind->tcstat,ekind->grpstat,
-//                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
-//                             md->invmass,md->ptype,
-//                             md->cFREEZE,md->cACC,
-//                             state,force,inputrec->dMuMass,inputrec->dAlphaPress,
-//                             bExtended,alpha,
-//                             intCoeffs[coeffVel1]);
-//            if (*intSteps == 3 | step == 0)
-//               *intSteps = 0;
-//            else if (*intSteps == 0)
-//               *intSteps = 1;
-//            else if (*intSteps == 1)
-//               *intSteps = 2;
-//            else if (*intSteps == 2)
-//               *intSteps = 3;
-//            break;
-//        case etrtVELOCITY2:
-//            coeffVel2 = 2.0*(*intSteps);
-//            /* Velocities */
-//            do_update_vv_vel(start,nrend,dt_int,
-//                             ekind->tcstat,ekind->grpstat,
-//                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
-//
-//                             md->invmass,md->ptype,
-//                             md->cFREEZE,md->cACC,
-//                             state,force,inputrec->dMuMass,inputrec->dAlphaPress,
-//                             bExtended,alpha,
-//                             intCoeffs[coeffVel2]);
-//            break;
-//        case etrtPOSITION:
-//            coeffPos = 2.0*(*intSteps) + 1.0;
-//            /* Positions */
-//            do_update_vv_pos(start,nrend,dt_int,
-//                             ekind->tcstat,ekind->grpstat,
-//                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
-//                             md->invmass,md->ptype,md->cFREEZE,
-//                             state,xprime,force,inputrec->dMuMass,
-//                             bExtended,alpha,
-//                             intCoeffs[coeffPos]);
-//            break;
-//        }
-//        break;
+            do_update_vv_vel(start,nrend,dt,
+                             ekind->tcstat,ekind->grpstat,
+                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+                             md->invmass,md->ptype,
+                             md->cFREEZE,md->cACC,
+                             state,force,inputrec->dMuMass,inputrec->dAlphaPress,
+                             bExtended,alpha,
+                             intCoeffs[coeffVel1]);
+            break;
+        case etrtVELOCITY2:
+            /* Velocities */
+            do_update_vv_vel(start,nrend,dt,
+                             ekind->tcstat,ekind->grpstat,
+                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+                             md->invmass,md->ptype,
+                             md->cFREEZE,md->cACC,
+                             state,force,inputrec->dMuMass,inputrec->dAlphaPress,
+                             bExtended,alpha,
+                             intCoeffs[0]);
+            break;
+        case etrtPOSITION:
+            coeffPos = 1 + 2*(stepIntegrator%2);
+            /* Positions */
+            do_update_vv_pos(start,nrend,dt,
+                             ekind->tcstat,ekind->grpstat,
+                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+                             md->invmass,md->ptype,md->cFREEZE,
+                             state,xprime,force,inputrec->dMuMass,
+                             bExtended,alpha,
+                             intCoeffs[coeffPos]);
+            break;
+        }
+        break;
+    case (eiVNI9):
+        switch (UpdatePart) {
+        case etrtVELOCITY1:
+            coeffVel1 = 0 + 2*(stepIntegrator%n_int);
+            /* Velocities */
+            do_update_vv_vel(start,nrend,dt,
+                             ekind->tcstat,ekind->grpstat,
+                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+                             md->invmass,md->ptype,
+                             md->cFREEZE,md->cACC,
+                             state,force,inputrec->dMuMass,inputrec->dAlphaPress,
+                             bExtended,alpha,
+                             intCoeffs[coeffVel1]);
+            break;
+        case etrtVELOCITY2:
+            /* Velocities */
+            do_update_vv_vel(start,nrend,dt,
+                             ekind->tcstat,ekind->grpstat,
+                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+
+                             md->invmass,md->ptype,
+                             md->cFREEZE,md->cACC,
+                             state,force,inputrec->dMuMass,inputrec->dAlphaPress,
+                             bExtended,alpha,
+                             intCoeffs[0]);
+            break;
+        case etrtPOSITION:
+            coeffPos = 1 + 2*(stepIntegrator%3);
+            /* Positions */
+            do_update_vv_pos(start,nrend,dt,
+                             ekind->tcstat,ekind->grpstat,
+                             inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+                             md->invmass,md->ptype,md->cFREEZE,
+                             state,xprime,force,inputrec->dMuMass,
+                             bExtended,alpha,
+                             intCoeffs[coeffPos]);
+            break;
+        }
+        break;
     default:
         gmx_fatal(FARGS,"Don't know how to update coordinates");
         break;
