@@ -111,7 +111,7 @@ void update_coords(FILE         *fplog,
                           tensor       total_vir,
                           double       *intCoeffs,
                           int          stepIntegrator,
-                          int          n); // PRUEBA
+                          int          n); // CONSTRAINING
 
 /* Return TRUE if OK, FALSE in case of Shake Error */
 
@@ -136,7 +136,7 @@ void update_constraints(FILE         *fplog,
 			       gmx_bool         bFirstHalf,
 			       gmx_bool         bCalcVir,
 			       real         vetanew,
-                               int          n); // PRUEBA
+                               int          n); // CONSTRAINING
 
 /* Return TRUE if OK, FALSE in case of Shake Error */
 
