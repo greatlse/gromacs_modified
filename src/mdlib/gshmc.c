@@ -183,11 +183,6 @@ int metropolis(FILE *fplog, gmx_mtop_t *mtop, t_inputrec *ir, t_state *current[7
      }
   }
 
-/* PRUEBA */
-//if (iTest==MDMC)
-// iResult = ACCEPTED;
-/* PRUEBA */
-
   static int MDMCcount = 0;
   static int PMMCcount = 0;
   static int MDMCaccepted = 0;
@@ -579,8 +574,7 @@ void momentum_flip(int natoms, rvec v[])
 void momentum_update(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms *mdatoms, t_state *state,
                      rvec *f, t_graph *graph, t_commrec *cr, t_nrnb *nrnb,
                      t_forcerec *fr, gmx_localtop_t *top, tensor shake_vir,
-                     gmx_rng_t rng, double *dDeltaXi, rvec *f_forw, rvec *f_back,
-                     int n_int) // PRUEBA
+                     gmx_rng_t rng, double *dDeltaXi, rvec *f_forw, rvec *f_back)
 {
   real phi = ir->dPhi;
   real delta_t = ir->delta_t;
@@ -621,7 +615,7 @@ void momentum_update(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms
 
      do_constrain_first(fplog, constr, ir, mdatoms, state, f,
                         graph, cr, nrnb, fr, top, shake_vir,
-                        1); // PRUEBA
+                        1); // CONSTRAINING
 
      copy_rvecn(state->v,    xi, 0, state->natoms);
      copy_rvecn(xcopy, state->x, 0, state->natoms);
@@ -695,8 +689,7 @@ void momentum_update(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms
 void momentum_generate(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms *mdatoms, t_state *state,
                      rvec *f, t_graph *graph, t_commrec *cr, t_nrnb *nrnb,
                      t_forcerec *fr, gmx_localtop_t *top, tensor shake_vir,
-                     gmx_rng_t rng,
-                     int n) // PRUEBA
+                     gmx_rng_t rng)
 {
   /* Create a new random velocity vector on state->v */
   low_mspeed2(fplog, cr, ir->dTempi, mdatoms, state->v, rng);
@@ -709,7 +702,7 @@ void momentum_generate(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdato
   {
      do_constrain_first(fplog, constr, ir, mdatoms, state, f,
                         graph, cr, nrnb, fr, top, shake_vir,
-                        1); // PRUEBA
+                        1); // CONSTRAINING
   }
 }
 

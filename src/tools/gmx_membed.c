@@ -1893,10 +1893,8 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     int chkpt_ret;
 #endif
 
-    /* PRUEBA */
     /* New integrators VNI */
     int    n = 0;
-    int    intSteps = 0;
     double intCoeffs[9] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     double da1 = 0.0, da2 = 0.0, db1 = 0.0, db2 = 0.0, db3 = 0.0;
     int    stepIntegrator = 0;
@@ -1943,7 +1941,6 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             intCoeffs[8] = db1;
         }
     }
-    /* PRUEBA */
 
     /* Check for special mdrun options */
     bRerunMD = (Flags & MD_RERUN);
@@ -2199,7 +2196,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             /* Constrain the initial coordinates and velocities */
             do_constrain_first(fplog,constr,ir,mdatoms,state,f,
                                graph,cr,nrnb,fr,top,shake_vir,
-                               1); // PRUEBA
+                               1); // CONSTRAINING
         }
         if (vsite)
         {
@@ -2696,7 +2693,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                                       shellfc,fr,bBornRadii,t,mu_tot,
                                       state->natoms,&bConverged,vsite,
                                       outf->fp_field,
-                                      n); // PRUEBA
+                                      n); // CONSTRAINING
             tcount+=count;
 
             if (bConverged)
@@ -2814,7 +2811,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                                        &top->idef,shake_vir,NULL,
                                        cr,nrnb,wcycle,upd,constr,
                                        bInitStep,TRUE,bCalcEnerPres,vetanew,
-                                       n); // PRUEBA
+                                       n); // CONSTRAINING
 
                     if (!bOK && !bFFscan)
                     {
@@ -3215,7 +3212,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                                    &top->idef,shake_vir,force_vir,
                                    cr,nrnb,wcycle,upd,constr,
                                    bInitStep,FALSE,bCalcEnerPres,state->veta,
-                                   n); // PRUEBA
+                                   n); // CONSTRAINING
 
                 if (ir->eI==eiVVAK)
                 {
@@ -3246,7 +3243,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                                        &top->idef,tmp_vir,force_vir,
                                        cr,nrnb,wcycle,upd,NULL,
                                        bInitStep,FALSE,bCalcEnerPres,state->veta,
-                                       n); // PRUEBA
+                                       n); // CONSTRAINING
                 }
                 if (!bOK && !bFFscan)
                 {

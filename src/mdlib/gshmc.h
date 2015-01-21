@@ -32,13 +32,11 @@ void momentum_update(FILE *fplog, gmx_constr_t constr,
                      t_state *state, rvec *f,
                      t_graph *graph, t_commrec *cr, t_nrnb *nrnb,
                      t_forcerec *fr, gmx_localtop_t *top, tensor shake_vir,
-                     gmx_rng_t rng, double *Xi, rvec *f_forw, rvec *f_back,
-                     int n); // PRUEBA
+                     gmx_rng_t rng, double *Xi, rvec *f_forw, rvec *f_back);
 
 void momentum_generate(FILE *fplog, gmx_constr_t constr, t_inputrec *ir, t_mdatoms *mdatoms, t_state *state,
                      rvec *f, t_graph *graph, t_commrec *cr, t_nrnb *nrnb,
                      t_forcerec *fr, gmx_localtop_t *top, tensor shake_vir,
-                     gmx_rng_t rng,
-                     int n); // PRUEBA
+                     gmx_rng_t rng);
 
 void backup_state(t_state *state_a, t_state *state_b, rvec **f_a, rvec **f_b);
