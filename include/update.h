@@ -111,7 +111,7 @@ void update_coords(FILE         *fplog,
                           tensor       total_vir,
                           double       *intCoeffs,
                           int          stepIntegrator,
-                          int          n); // CONSTRAINING
+                          int          n);
 
 /* Return TRUE if OK, FALSE in case of Shake Error */
 

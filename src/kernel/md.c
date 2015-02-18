@@ -1279,35 +1279,35 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
         else if (ir->eI==eiVNI5)
         {
             n = 2;
-            // [b1, a1, b2, a1, b1,  0,  0,  0,  0]
+            // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
             da1 = 0.5;
             db1 = (3.0 - sqrt(3.0))/6.0, db2 = 1.0 - 2.0*db1;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
-            intCoeffs[2] = db2;
+            intCoeffs[2] = db2*0.5;
             intCoeffs[3] = da1, intCoeffs[4] = db1;
         }
         else if (ir->eI==eiVNI7)
         {
             n = 3;
-            // [b1, a1, b2, a2, b2, a1, b1,  0,  0]
+            // [b1, a1, b2/2, a2, b2/2, a1, b1,  0,  0]
             da1 = 0.29619504261126, da2 = 1.0 - 2.0*da1;
             db1 = 0.11888010966548, db2 = 0.5 - db1;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
-            intCoeffs[2] = db2, intCoeffs[3] = da2;
-            intCoeffs[4] = db2, intCoeffs[5] = da1;
+            intCoeffs[2] = db2*0.5, intCoeffs[3] = da2;
+            intCoeffs[4] = db2*0.5, intCoeffs[5] = da1;
             intCoeffs[6] = db1;
         }
         else if (ir->eI==eiVNI9)
         {
             n = 4;
-            // [b1, a1, b2, a2, b3, a2, b2, a1, b1]
+            // [b1, a1, b2/2, a2, b3/2, a2, b2/2, a1, b1]
             da1 = 0.191667800000000000000, da2 = 0.5 - da1;
             db1 = 0.071353913450279725904;
             db2 = 0.268548791161230105820, db3 = 1.0 - 2.0*db1 - 2.0*db2;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
-            intCoeffs[2] = db2, intCoeffs[3] = da2;
-            intCoeffs[4] = db3, intCoeffs[5] = da2;
-            intCoeffs[6] = db2, intCoeffs[7] = da1;
+            intCoeffs[2] = db2*0.5, intCoeffs[3] = da2;
+            intCoeffs[4] = db3*0.5, intCoeffs[5] = da2;
+            intCoeffs[6] = db2*0.5, intCoeffs[7] = da1;
             intCoeffs[8] = db1;
         }
     }
@@ -1579,7 +1579,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             /* Constrain the initial coordinates and velocities */
             do_constrain_first(fplog,constr,ir,mdatoms,state,f,
                                graph,cr,nrnb,fr,top,shake_vir,
-                               1);
+                               1); // CONSTRAINING
         }
         if (vsite)
         {
@@ -1653,7 +1653,9 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
 
     /* Andersen barostat*/
     if (ir->epc == epcANDERSEN)
+    {
         state->q = state->vol0;
+    }
     /* Andersen barostat*/
     
     if (MASTER(cr))
@@ -2139,7 +2141,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                                       shellfc,fr,bBornRadii,t,mu_tot,
                                       state->natoms,&bConverged,vsite,
                                       outf->fp_field,
-                                      n);
+                                      n); // CONSTRAINING
             tcount+=count;
 
             if (bConverged)
@@ -2211,7 +2213,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             /*#### UPDATE EXTENDED VARIABLES IN TROTTER FORMULATION */
 
             /* save the state */
-            if (bIterations && iterate.bIterate) {
+            if (bIterations && iterate.bIterate) { 
                 copy_coupling_state(state,bufstate,ekind,ekind_save,&(ir->opts));
             }
 
@@ -2246,7 +2248,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                                        &top->idef,shake_vir,NULL,
                                        cr,nrnb,wcycle,upd,constr,
                                        bInitStep,TRUE,bCalcEnerPres,vetanew,
-                                       n);
+                                       n); // CONSTRAINING
                     
                     if (!bOK && !bFFscan)
                     {
@@ -3096,7 +3098,7 @@ reload: // goto point for momentum update retrials
                                    upd,bInitStep);
                 }
 
-                if (bVV || (bVNI && stepIntegrator%n == 0)) // New Integrators. Merged stages
+                if (bVV || bVNI)
                 {
                     /* velocity half-step update */
                     update_coords(fplog,step,ir,mdatoms,state,f,
@@ -3126,7 +3128,7 @@ reload: // goto point for momentum update retrials
                                    &top->idef,shake_vir,force_vir,
                                    cr,nrnb,wcycle,upd,constr,
                                    bInitStep,FALSE,bCalcEnerPres,state->veta,
-                                   n);
+                                   n); // CONSTRAINING
                 
                 if (ir->eI==eiVVAK) 
                 {
@@ -3159,7 +3161,7 @@ reload: // goto point for momentum update retrials
                                        cr,nrnb,wcycle,upd,NULL,
                                        bInitStep,FALSE,bCalcEnerPres,
                                        state->veta,
-                                       n);
+                                       1); // CONSTRAINING
                 }
                 if (!bOK && !bFFscan) 
                 {
@@ -3354,8 +3356,8 @@ reload: // goto point for momentum update retrials
                 
                 do_dr  = do_per_step(step,ir->nstdisreout);
                 do_or  = do_per_step(step,ir->nstorireout);
-
-                if(stepIntegrator == 0 || stepIntegrator%n == 0) // New Integrator
+                
+                if (stepIntegrator == 0 || stepIntegrator%n == 0) // New Integrator
                 {
                     print_ebin(outf->fp_ene,do_ene,do_dr,do_or,do_log?fplog:NULL,
                                step,t,
