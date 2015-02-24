@@ -187,64 +187,6 @@ static void check_cg_sizes(const char *topfn,t_block *cgs,warninp_t wi)
     }
 }
 
-/* MARIO */
-//static double adaptive_optimization_scheme(real auxiliarperiod2, double dt) // Right now it like this for debugging, we can make it double and put the printf's outside of this function
-static void adaptive_optimization_scheme(real auxiliarperiod2, double dt)
-{
-  double dt2,dt4;
-  double da,da_trial,da_opt,daux,drho1,drho2;
-
-  real auxiliarperiod = sqrt(auxiliarperiod2);
-  real twopi = 2*M_PI;
-
-  real dt_warn   = auxiliarperiod/10;
-  real dt_max    = auxiliarperiod/5;
-  real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
-  real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
-  real dt_scaled = 2*dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper
-printf("dt_scaled = %f\n",dt_scaled);
-
-  dt2   = sqr(dt_scaled);
-  dt4   = sqr(dt2);
-  da    = 0.25;
-  daux  = sqr(2*sqr(da)*(0.5-da)*dt2+4*sqr(da)-6*da+1)*1e3;
-  daux  = daux/(2-da*dt2);
-  daux  = daux/(2-(0.5-da)*dt2);
-  daux  = daux/(1-da*(0.5-da)*dt2);
-  drho1 = dt4*daux*0.125;
-
-  int stop = 5; // the number of decimals in the solution are stop+1. By default stop = 5
-  double dincr = 1e-2;
-  da_trial = da;
-  while (stop != 0)
-  {
-     da = da - dincr;
-     daux = sqr(2*sqr(da)*(0.5-da)*dt2+4*sqr(da)-6*da+1)*1e3;
-     daux = daux/(2-da*dt2);
-     daux = daux/(2-(0.5-da)*dt2);
-     daux = daux/(1-da*(0.5-da)*dt2);
-     drho2 = dt4*daux*0.125;
-//printf("rho1(%f) = %f, rho2(%f) = %f\n",da_trial,drho1,da,drho2); // MARIO
-     if (drho1 > drho2)
-     {
-//printf("HOLA\n"); // MARIO
-         drho1 = drho2;
-         da_trial = da;
-     }
-     else
-     {
-         dincr = dincr*1e-1;
-         stop = stop-1;
-         da = da_trial;
-         da_opt = da;
-     }
-  }
-  //return da_opt;
-  printf("FINAL: The optimal parameter a is = %f\n",da_opt);
-  printf("ADAPTIVE SCHEME for the integration\n");
-}
-/* MARIO */
-
 static void check_bonds_timestep(gmx_mtop_t *mtop,double dt,warninp_t wi)
 {
     /* This check is not intended to ensure accurate integration,
@@ -274,7 +216,7 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,double dt,warninp_t wi)
     t_ilist   *ilist,*ilb,*ilc,*ils;
     int       ftype;
     int       i,a1,a2,w_a1,w_a2,j;
-    real      twopi2,limit2,fc,re,m1,m2,period2,w_period2,auxiliarperiod2; // MARIO
+    real      twopi2,limit2,fc,re,m1,m2,period2,w_period2;
     gmx_bool  bFound,bWater,bWarn;
     char      warn_buf[STRLEN];
 
@@ -288,7 +230,6 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,double dt,warninp_t wi)
     w_period2 = -1.0;
     
     w_moltype = NULL;
-    auxiliarperiod2 = 10; // MARIO
     for(molt=0; molt<mtop->nmoltype; molt++)
     {
         moltype = &mtop->moltype[molt];
@@ -325,12 +266,6 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,double dt,warninp_t wi)
                 {
                     period2 = GMX_FLOAT_MAX;
                 }
-                /* MARIO */
-                if (period2 < auxiliarperiod2)
-                {
-                    auxiliarperiod2 = period2;
-                }
-                /* MARIO */
                 if (debug)
                 {
                     fprintf(debug,"fc %g m1 %g m2 %g period %g\n",
@@ -367,13 +302,6 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,double dt,warninp_t wi)
             }
         }
     }
-
-    /* MARIO */
-    printf("\nADAPTIVE SCHEME for the integration\n");
-    printf("The fascest oscillation period found is %.1e ps\n",sqrt(auxiliarperiod2));
-    //double da = adaptive_optimization_scheme(auxiliarperiod2,dt);
-    adaptive_optimization_scheme(auxiliarperiod2,dt);
-    /* MARIO */
     
     if (w_moltype != NULL)
     {
