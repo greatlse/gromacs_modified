@@ -1832,11 +1832,14 @@ void update_coords(FILE *fplog,
             break;
         }
         break;
-    case (eiVNI5):
+    case (eiTWOS):
+    case (eiTWOSMIN):
+    case (eiTWOSADAPT):
         switch (UpdatePart) {
         case etrtVELOCITY1:
             coeffVel1 = 0 + 2*(stepIntegrator%n_int);
             /* Velocities */
+            printf("VELOCITY1 = %f\n",intCoeffs[coeffVel1]); // MARIO
             do_update_vv_vel(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
@@ -1847,8 +1850,8 @@ void update_coords(FILE *fplog,
                              intCoeffs[coeffVel1]);
             break;
         case etrtVELOCITY2:
-            coeffVel2 = 0 + 2*(stepIntegrator%n_int);
             /* Velocities */
+            printf("VELOCITY1 = %f\n",intCoeffs[0]); // MARIO
             do_update_vv_vel(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
@@ -1856,10 +1859,11 @@ void update_coords(FILE *fplog,
                              md->cFREEZE,md->cACC,
                              state,force,inputrec->dMuMass,inputrec->dAlphaPress,
                              bExtended,alpha,
-                             intCoeffs[coeffVel2]);
+                             intCoeffs[0]);
             break;
         case etrtPOSITION:
             /* Positions */
+            printf("VELOCITY1 = %f\n",intCoeffs[1]); // MARIO
             do_update_vv_pos(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
@@ -1870,7 +1874,7 @@ void update_coords(FILE *fplog,
             break;
         }
         break;
-    case (eiVNI7):
+    case (eiTHREES):
         switch (UpdatePart) {
         case etrtVELOCITY1:
             coeffVel1 = 0 + 2*(stepIntegrator%n_int);
@@ -1885,17 +1889,15 @@ void update_coords(FILE *fplog,
                              intCoeffs[coeffVel1]);
             break;
         case etrtVELOCITY2:
-            coeffVel2 = 0 + 2*(stepIntegrator%n_int);
             /* Velocities */
             do_update_vv_vel(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
-
                              md->invmass,md->ptype,
                              md->cFREEZE,md->cACC,
                              state,force,inputrec->dMuMass,inputrec->dAlphaPress,
                              bExtended,alpha,
-                             intCoeffs[coeffVel2]);
+                             intCoeffs[0]);
             break;
         case etrtPOSITION:
             coeffPos = 1 + 2*(stepIntegrator%2);
@@ -1910,7 +1912,7 @@ void update_coords(FILE *fplog,
             break;
         }
         break;
-    case (eiVNI9):
+    case (eiFOURS):
         switch (UpdatePart) {
         case etrtVELOCITY1:
             coeffVel1 = 0 + 2*(stepIntegrator%n_int);
@@ -1925,7 +1927,6 @@ void update_coords(FILE *fplog,
                              intCoeffs[coeffVel1]);
             break;
         case etrtVELOCITY2:
-            coeffVel2 = 0 + 2*(stepIntegrator%n_int);
             /* Velocities */
             do_update_vv_vel(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
@@ -1935,7 +1936,7 @@ void update_coords(FILE *fplog,
                              md->cFREEZE,md->cACC,
                              state,force,inputrec->dMuMass,inputrec->dAlphaPress,
                              bExtended,alpha,
-                             intCoeffs[coeffVel2]);
+                             intCoeffs[0]);
             break;
         case etrtPOSITION:
             coeffPos = 1 + 2*(stepIntegrator%3);

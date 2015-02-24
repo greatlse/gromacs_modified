@@ -64,7 +64,7 @@
 #include "mtop_util.h"
 
 /* This number should be increased whenever the file format changes! */
-static const int tpx_version = 76;
+static const int tpx_version = 77;
 
 /* This number should only be increased when you edit the TOPOLOGY section
  * of the tpx format. This way we can maintain forward compatibility too
@@ -939,6 +939,10 @@ static void do_inputrec(t_fileio *fio, t_inputrec *ir,gmx_bool bRead,
        gmx_fio_do_double(fio, ir->dMuMass);
        gmx_fio_do_double(fio, ir->dAlphaPress);
     }
+
+    /* Adaptive optimization scheme for the integrator */
+    if (file_version >= 77)
+       gmx_fio_do_double(fio, ir->dIntA);
 }
 
 

@@ -284,7 +284,7 @@ gmx_bool constrain(FILE *fplog,gmx_bool bLog,gmx_bool bEner,
                real lambda,real *dvdlambda,
                rvec *v,tensor *vir,
                t_nrnb *nrnb,int econq,gmx_bool bPscal,real veta, real vetanew,
-               int n) // PRUEBA
+               int n) // CONSTRAINING
 {
     gmx_bool    bOK,bDump;
     int     start,homenr,nrend;
@@ -320,7 +320,7 @@ gmx_bool constrain(FILE *fplog,gmx_bool bLog,gmx_bool bEner,
     }
     else
     {
-        invdt  = n/ir->delta_t; // PRUEBA
+        invdt  = n/ir->delta_t; // CONSTRAINING - THIS IS THE MAIN POINT
     }
 
     if (ir->efep != efepNO && EI_DYNAMICS(ir->eI))

@@ -689,7 +689,6 @@ void pr_inputrec(FILE *fp,int indent,const char *title,t_inputrec *ir,
     pr_qm_opts(fp,indent,"qm_opts",&(ir->opts));
 
     /* GSHMC */
-    //PS("bGSHMC",BOOL(ir->bGSHMC));
     PI("met",ir->met);
     PR("dPhi",ir->dPhi);
     PI("iMomUpd",ir->iMomUpd);
@@ -705,6 +704,9 @@ void pr_inputrec(FILE *fp,int indent,const char *title,t_inputrec *ir,
     /* Andersen barostat */
     PI("dMuMass",ir->dMuMass);
     PI("dAlphaPress",ir->dAlphaPress);
+
+    /* Adaptive optimization scheme for the integrator */
+    PI("dIntA",ir->dIntA);
   }
 }
 #undef PS

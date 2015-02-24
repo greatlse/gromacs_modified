@@ -705,6 +705,13 @@ void check_ir(const char *mdparin,t_inputrec *ir, t_gromppopts *opts,
      sprintf(err_buf, "GSHMC: parameter dTempi (canonical ensemble temperature) must be >0\n");
      CHECK(ir->dTempi < 0);
   }
+
+  /* Adaptive optimization scheme STUFF */
+  if (ir->eI == eiTWOSADAPT)
+  {
+     sprintf(err_buf, "ADAPTIVE SCHEME: parameter for the integrator is calculated during the grompp routine\n");
+     CHECK(ir->dIntA !=1);
+  }
 }
 
 static int str_nelem(const char *str,int maxptr,char *ptr[])
@@ -1195,6 +1202,11 @@ void get_ir(const char *mdparin,const char *mdparout,
   CCTYPE ("Andersen barostat");
   RTYPE ("mu_mass",               ir->dMuMass,    1);
   RTYPE ("alpha_press",           ir->dAlphaPress,1);
+
+  /* Adaptive optimization scheme for the integrator */
+  CCTYPE ("Adaptive optimization scheme for the integrator");
+  RTYPE("integrator_a",           ir->dIntA,      1);
+
 
   write_inpfile(mdparout,ninp,inp,FALSE,wi);
   for (i=0; (i<ninp); i++) {

@@ -188,8 +188,7 @@ static void check_cg_sizes(const char *topfn,t_block *cgs,warninp_t wi)
 }
 
 /* MARIO */
-//static double adaptive_optimization_scheme(real auxiliarperiod2, double dt) // Right now it like this for debugging, we can make it double and put the printf's outside of this function
-static void adaptive_optimization_scheme(real auxiliarperiod2, double dt)
+static void adaptive_optimization_scheme(t_inputrec *ir, real auxiliarperiod2, double dt)
 {
   double dt2,dt4;
   double da,da_trial,da_opt,daux,drho1,drho2;
@@ -239,13 +238,14 @@ printf("dt_scaled = %f\n",dt_scaled);
          da_opt = da;
      }
   }
-  //return da_opt;
+  ir->dIntA = da_opt;
   printf("FINAL: The optimal parameter a is = %f\n",da_opt);
   printf("ADAPTIVE SCHEME for the integration\n");
 }
 /* MARIO */
 
-static void check_bonds_timestep(gmx_mtop_t *mtop,double dt,warninp_t wi)
+//static void check_bonds_timestep(gmx_mtop_t *mtop,double dt,warninp_t wi)
+static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) // MARIO
 {
     /* This check is not intended to ensure accurate integration,
      * rather it is to signal mistakes in the mdp settings.
@@ -277,6 +277,7 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,double dt,warninp_t wi)
     real      twopi2,limit2,fc,re,m1,m2,period2,w_period2,auxiliarperiod2; // MARIO
     gmx_bool  bFound,bWater,bWarn;
     char      warn_buf[STRLEN];
+    double    dt = ir->delta_t; // MARIO
 
     ip = mtop->ffparams.iparams;
 
@@ -371,8 +372,7 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,double dt,warninp_t wi)
     /* MARIO */
     printf("\nADAPTIVE SCHEME for the integration\n");
     printf("The fascest oscillation period found is %.1e ps\n",sqrt(auxiliarperiod2));
-    //double da = adaptive_optimization_scheme(auxiliarperiod2,dt);
-    adaptive_optimization_scheme(auxiliarperiod2,dt);
+    adaptive_optimization_scheme(ir,auxiliarperiod2,dt);
     /* MARIO */
     
     if (w_moltype != NULL)
@@ -1548,7 +1548,8 @@ int main (int argc, char *argv[])
 
   if (EI_DYNAMICS(ir->eI) && ir->eI != eiBD)
   {
-      check_bonds_timestep(sys,ir->delta_t,wi);
+      //check_bonds_timestep(sys,ir->delta_t,wi);
+      check_bonds_timestep(sys,ir,wi); // MARIO
   }
 
   if (EI_ENERGY_MINIMIZATION(ir->eI) && 0 == ir->nsteps)

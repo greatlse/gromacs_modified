@@ -1166,7 +1166,7 @@ static void compute_globals(FILE *fplog, gmx_global_stat_t gstat, t_commrec *cr,
 
     /* we calculate a full state kinetic energy either with full-step velocity verlet
        or half step where we need the pressure */
-    bEkinAveVel = (ir->eI==eiVV || ir->eI==eiVNI5 || ir->eI==eiVNI7 || ir->eI==eiVNI9 || (ir->eI==eiVVAK && IR_NPT_TROTTER(ir) && bPres) || bReadEkin);
+    bEkinAveVel = (ir->eI==eiVV || ir->eI==eiTWOS || ir->eI==eiTWOSMIN || ir->eI==eiTWOSADAPT || ir->eI==eiTHREES || ir->eI==eiFOURS || (ir->eI==eiVVAK && IR_NPT_TROTTER(ir) && bPres) || bReadEkin);
 
     /* in initalization, it sums the shake virial in vv, and to
        sums ekinh_old in leapfrog (or if we are calculating ekinh_old for other reasons */
@@ -1899,47 +1899,65 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     double da1 = 0.0, da2 = 0.0, db1 = 0.0, db2 = 0.0, db3 = 0.0;
     int    stepIntegrator = 0;
     /* Define the values used for the integrators (VV or VNI) */
-    if (bVV || bVNI)
+    switch (ir->eI)
     {
-        if (ir->eI==eiVV || ir->eI==eiVVAK)
-        {
+        case (eiVV):
+        case (eiVVAK):
             n = 1;
             intCoeffs[0] = 0.5, intCoeffs[1] = 1.0;
-        }
-        else if (ir->eI==eiVNI5)
-        {
+            break;
+        case (eiTWOS):
             n = 2;
-            // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
+            // [b1, a1, b2, a1, b1,  0,  0,  0,  0]
             da1 = 0.5;
             db1 = (3.0 - sqrt(3.0))/6.0, db2 = 1.0 - 2.0*db1;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
-            intCoeffs[2] = db2*0.5;
+            intCoeffs[2] = db2;
             intCoeffs[3] = da1, intCoeffs[4] = db1;
-        }
-        else if (ir->eI==eiVNI7)
-        {
+            break;
+        case (eiTWOSMIN):
+            n = 2;
+            // [b1, a1, b2, a1, b1,  0,  0,  0,  0]
+            da1 = 0.5;
+            db1 = 0.1932, db2 = 1.0 - 2.0*db1;
+            intCoeffs[0] = db1, intCoeffs[1] = da1;
+            intCoeffs[2] = db2;
+            intCoeffs[3] = da1, intCoeffs[4] = db1;
+            break;
+        case (eiTWOSADAPT):
+            n = 2;
+            // [b1, a1, b2, a1, b1,  0,  0,  0,  0]
+            da1 = 0.5;
+            db1 = ir->dIntA, db2 = 1.0 - 2.0*db1;
+            intCoeffs[0] = db1, intCoeffs[1] = da1;
+            intCoeffs[2] = db2;
+            intCoeffs[3] = da1, intCoeffs[4] = db1;
+            break;
+        case (eiTHREES):
             n = 3;
-            // [b1, a1, b2/2, a2, b2/2, a1, b1,  0,  0]
+            // [b1, a1, b2, a2, b2, a1, b1,  0,  0]
             da1 = 0.29619504261126, da2 = 1.0 - 2.0*da1;
             db1 = 0.11888010966548, db2 = 0.5 - db1;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
-            intCoeffs[2] = db2*0.5, intCoeffs[3] = da2;
-            intCoeffs[4] = db2*0.5, intCoeffs[5] = da1;
+            intCoeffs[2] = db2, intCoeffs[3] = da2;
+            intCoeffs[4] = db2, intCoeffs[5] = da1;
             intCoeffs[6] = db1;
-        }
-        else if (ir->eI==eiVNI9)
-        {
+            break;
+        case (eiFOURS):
             n = 4;
-            // [b1, a1, b2/2, a2, b3/2, a2, b2/2, a1, b1]
+            // [b1, a1, b2, a2, b3, a2, b2, a1, b1]
             da1 = 0.191667800000000000000, da2 = 0.5 - da1;
             db1 = 0.071353913450279725904;
             db2 = 0.268548791161230105820, db3 = 1.0 - 2.0*db1 - 2.0*db2;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
-            intCoeffs[2] = db2*0.5, intCoeffs[3] = da2;
-            intCoeffs[4] = db3*0.5, intCoeffs[5] = da2;
-            intCoeffs[6] = db2*0.5, intCoeffs[7] = da1;
+            intCoeffs[2] = db2, intCoeffs[3] = da2;
+            intCoeffs[4] = db3, intCoeffs[5] = da2;
+            intCoeffs[6] = db2, intCoeffs[7] = da1;
             intCoeffs[8] = db1;
-        }
+            break;
+        default:
+            n = 1;
+            break;
     }
 
     /* Check for special mdrun options */
@@ -3185,7 +3203,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                 update_pcouple(fplog,step,ir,state,pcoupl_mu,M,wcycle,
                                 upd,bInitStep);
 
-		if (bVV || bVNI)
+		if (bVV || (bVNI && stepIntegrator%n == 0)) // New Integrators. Merged stages
 		{
 		    /* velocity half-step update */
 		    update_coords(fplog,step,ir,mdatoms,state,f,fr->bTwinRange && bNStList,fr->f_twin,fcd,

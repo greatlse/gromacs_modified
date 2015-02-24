@@ -284,7 +284,6 @@ typedef struct {
   int  QMconstraints;   /* constraints on QM bonds                       */
   int  QMMMscheme;      /* Scheme: ONIOM or normal                       */
   real scalefactor;     /* factor for scaling the MM charges in QM calc. */
-  //gmx_bool bGSHMC;      /* GSHMC flag                                    */ 
   int met;              /* choise of sampling methodology                */ 
   real dPhi;            /* parameter for partial momentum update in GSHMC*/
   int  iMomUpd;         /* number of momemtum update trials in GSHMC     */
@@ -296,6 +295,7 @@ typedef struct {
   gmx_bool bPandeTest;  /* Pande test                                    */
   double dMuMass;       /* mass for the Andersen barostat                */
   double dAlphaPress;   /* external pressure for the Andersen barostat   */
+  double dIntA;         /* parameter a for the adaptive integrator scheme*/
 } t_inputrec;
 
 #define DEFORM(ir) ((ir).deform[XX][XX]!=0 || (ir).deform[YY][YY]!=0 || (ir).deform[ZZ][ZZ]!=0 || (ir).deform[YY][XX]!=0 || (ir).deform[ZZ][XX]!=0 || (ir).deform[ZZ][YY]!=0)
@@ -312,9 +312,9 @@ typedef struct {
 
 #define IR_EXCL_FORCES(ir) (EEL_FULL((ir).coulombtype) || (EEL_RF((ir).coulombtype) && (ir).coulombtype != eelRF_NEC) || (ir).implicit_solvent != eisNO)
 /* use pointer definitions of ir here, since that's what's usually used in the code */
-#define IR_NVT_TROTTER(ir) ((((ir)->eI == eiVV) || ((ir)->eI == eiVVAK) || ((ir)->eI == eiVNI5) || ((ir)->eI == eiVNI7) || ((ir)->eI == eiVNI9)) && ((ir)->etc == etcNOSEHOOVER))
+#define IR_NVT_TROTTER(ir) ((((ir)->eI == eiVV) || ((ir)->eI == eiVVAK) || ((ir)->eI == eiTWOS) || ((ir)->eI == eiTWOSMIN) || ((ir)->eI == eiTWOSADAPT) || ((ir)->eI == eiTHREES) || ((ir)->eI == eiFOURS)) && ((ir)->etc == etcNOSEHOOVER))
 
-#define IR_NPT_TROTTER(ir) ((((ir)->eI == eiVV) || ((ir)->eI == eiVVAK) || ((ir)->eI == eiVNI5) || ((ir)->eI == eiVNI7) || ((ir)->eI == eiVNI9)) && ((ir)->epc == epcMTTK))
+#define IR_NPT_TROTTER(ir) ((((ir)->eI == eiVV) || ((ir)->eI == eiVVAK) || ((ir)->eI == eiTWOS) || ((ir)->eI == eiTWOSMIN) || ((ir)->eI == eiTWOSADAPT) || ((ir)->eI == eiTHREES) || ((ir)->eI == eiFOURS)) && ((ir)->epc == epcMTTK))
 
 #ifdef __cplusplus
 }
