@@ -1832,7 +1832,9 @@ void update_coords(FILE *fplog,
             break;
         }
         break;
-    case (eiVNI5):
+    case (eiTWOS):
+    case (eiTWOSMIN):
+    case (eiTWOSADAPT):
         switch (UpdatePart) {
         case etrtVELOCITY1:
             coeffVel1 = 0 + 2*(stepIntegrator%n_int);
@@ -1870,7 +1872,7 @@ void update_coords(FILE *fplog,
             break;
         }
         break;
-    case (eiVNI7):
+    case (eiTHREES):
         switch (UpdatePart) {
         case etrtVELOCITY1:
             coeffVel1 = 0 + 2*(stepIntegrator%n_int);
@@ -1910,7 +1912,7 @@ void update_coords(FILE *fplog,
             break;
         }
         break;
-    case (eiVNI9):
+    case (eiFOURS):
         switch (UpdatePart) {
         case etrtVELOCITY1:
             coeffVel1 = 0 + 2*(stepIntegrator%n_int);

@@ -2157,7 +2157,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                                       shellfc,fr,bBornRadii,t,mu_tot,
                                       state->natoms,&bConverged,vsite,
                                       outf->fp_field,
-                                      n);
+                                      n); // CONSTRAINING
             tcount+=count;
 
             if (bConverged)
@@ -2265,7 +2265,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                                        &top->idef,shake_vir,NULL,
                                        cr,nrnb,wcycle,upd,constr,
                                        bInitStep,TRUE,bCalcEnerPres,vetanew,
-                                       n);
+                                       n); // CONSTRAINING
                     
                     if (!bOK && !bFFscan)
                     {
@@ -3146,7 +3146,7 @@ reload: // goto point for momentum update retrials
                                    &top->idef,shake_vir,force_vir,
                                    cr,nrnb,wcycle,upd,constr,
                                    bInitStep,FALSE,bCalcEnerPres,state->veta,
-                                   n);
+                                   n); // CONSTRAINING
                 
                 if (ir->eI==eiVVAK) 
                 {
@@ -3179,7 +3179,7 @@ reload: // goto point for momentum update retrials
                                        cr,nrnb,wcycle,upd,NULL,
                                        bInitStep,FALSE,bCalcEnerPres,
                                        state->veta,
-                                       n);
+                                       1); // CONSTRAINING
                 }
                 if (!bOK && !bFFscan) 
                 {
@@ -3375,7 +3375,7 @@ reload: // goto point for momentum update retrials
                 do_dr  = do_per_step(step,ir->nstdisreout);
                 do_or  = do_per_step(step,ir->nstorireout);
 
-                if(stepIntegrator == 0 || stepIntegrator%n == 0) // New Integrator
+                if (stepIntegrator == 0 || stepIntegrator%n == 0) // New Integrator
                 {
                     print_ebin(outf->fp_ene,do_ene,do_dr,do_or,do_log?fplog:NULL,
                                step,t,

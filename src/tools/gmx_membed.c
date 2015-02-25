@@ -2606,7 +2606,7 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             }
         }
 
-        if (MASTER(cr) && do_log && !bFFscan)
+        if (MASTER(cr) && do_log && !bFFscan && (stepIntegrator == 0 || stepIntegrator%n == 0)) // New Integrator
         {
             print_ebin_header(fplog,step,t,state->lambda);
         }
@@ -3468,9 +3468,12 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                 do_dr  = do_per_step(step,ir->nstdisreout);
                 do_or  = do_per_step(step,ir->nstorireout);
 
-                print_ebin(outf->fp_ene,do_ene,do_dr,do_or,do_log?fplog:NULL,
-                           step,t,
-                           eprNORMAL,bCompact,mdebin,fcd,groups,&(ir->opts));
+                if (stepIntegrator == 0 || stepIntegrator%n == 0) // New Integrator
+                {
+                    print_ebin(outf->fp_ene,do_ene,do_dr,do_or,do_log?fplog:NULL,
+                               step,t,
+                               eprNORMAL,bCompact,mdebin,fcd,groups,&(ir->opts));
+                }
             }
             if (ir->ePull != epullNO)
             {

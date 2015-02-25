@@ -380,7 +380,7 @@ static void compute_globals(FILE *fplog, gmx_global_stat_t gstat, t_commrec *cr,
     /* we calculate a full state kinetic energy either with full-step velocity verlet
        or half step where we need the pressure */
     
-    bEkinAveVel = (ir->eI==eiVV || ir->eI==eiVNI5 || ir->eI==eiVNI7 || ir->eI==eiVNI9 || (ir->eI==eiVVAK && bPres) || bReadEkin);
+    bEkinAveVel = (ir->eI==eiVV || ir->eI==eiTWOS || ir->eI==eiTWOSMIN || ir->eI==eiTWOSADAPT || ir->eI==eiTHREES || ir->eI==eiFOURS || (ir->eI==eiVVAK && bPres) || bReadEkin);
     
     /* in initalization, it sums the shake virial in vv, and to 
        sums ekinh_old in leapfrog (or if we are calculating ekinh_old) for other reasons */
@@ -1269,15 +1269,14 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
     bVNI = EI_VNI(ir->eI);
      
     /* Define the values used for the integrators (VV or VNI) */
-    if (bVV || bVNI)
+    switch (ir->eI)
     {
-        if (ir->eI==eiVV || ir->eI==eiVVAK)
-        {
+        case (eiVV):
+        case (eiVVAK):
             n = 1;
             intCoeffs[0] = 0.5, intCoeffs[1] = 1.0;
-        }
-        else if (ir->eI==eiVNI5)
-        {
+            break;
+        case (eiTWOS):
             n = 2;
             // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
             da1 = 0.5;
@@ -1285,9 +1284,26 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             intCoeffs[0] = db1, intCoeffs[1] = da1;
             intCoeffs[2] = db2*0.5;
             intCoeffs[3] = da1, intCoeffs[4] = db1;
-        }
-        else if (ir->eI==eiVNI7)
-        {
+            break;
+        case (eiTWOSMIN):
+            n = 2;
+            // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
+            da1 = 0.5;
+            db1 = 0.1932, db2 = 1.0 - 2.0*db1;
+            intCoeffs[0] = db1, intCoeffs[1] = da1;
+            intCoeffs[2] = db2*0.5;
+            intCoeffs[3] = da1, intCoeffs[4] = db1;
+            break;
+        case (eiTWOSADAPT):
+            n = 2;
+            // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
+            da1 = 0.5;
+            db1 = ir->dIntA, db2 = 1.0 - 2.0*db1;
+            intCoeffs[0] = db1, intCoeffs[1] = da1;
+            intCoeffs[2] = db2*0.5;
+            intCoeffs[3] = da1, intCoeffs[4] = db1;
+            break;
+        case (eiTHREES):
             n = 3;
             // [b1, a1, b2/2, a2, b2/2, a1, b1,  0,  0]
             da1 = 0.29619504261126, da2 = 1.0 - 2.0*da1;
@@ -1296,9 +1312,8 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             intCoeffs[2] = db2*0.5, intCoeffs[3] = da2;
             intCoeffs[4] = db2*0.5, intCoeffs[5] = da1;
             intCoeffs[6] = db1;
-        }
-        else if (ir->eI==eiVNI9)
-        {
+            break;
+        case (eiFOURS):
             n = 4;
             // [b1, a1, b2/2, a2, b3/2, a2, b2/2, a1, b1]
             da1 = 0.191667800000000000000, da2 = 0.5 - da1;
@@ -1309,7 +1324,10 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             intCoeffs[4] = db3*0.5, intCoeffs[5] = da2;
             intCoeffs[6] = db2*0.5, intCoeffs[7] = da1;
             intCoeffs[8] = db1;
-        }
+            break;
+        default:
+            n = 1;
+            break;
     }
 
     if (bVV || bVNI) /* to store the initial velocities while computing virial */
@@ -1579,7 +1597,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             /* Constrain the initial coordinates and velocities */
             do_constrain_first(fplog,constr,ir,mdatoms,state,f,
                                graph,cr,nrnb,fr,top,shake_vir,
-                               1); // CONSTRAINING
+                               1);
         }
         if (vsite)
         {
@@ -1626,7 +1644,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             copy_mat(ekind->tcstat[i].ekinh,ekind->tcstat[i].ekinh_old);
         } 
     }
-    if (ir->eI != eiVV && ir->eI != eiVNI5 && ir->eI != eiVNI7 && ir->eI != eiVNI9) 
+    if (ir->eI != eiVV && ir->eI != eiTWOS && ir->eI != eiTWOSMIN && ir->eI != eiTWOSADAPT && ir->eI != eiTHREES && ir->eI != eiFOURS) 
     {
         enerd->term[F_TEMP] *= 2; /* result of averages being done over previous and current step,
                                      and there is no previous step */
@@ -1653,9 +1671,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
 
     /* Andersen barostat*/
     if (ir->epc == epcANDERSEN)
-    {
         state->q = state->vol0;
-    }
     /* Andersen barostat*/
     
     if (MASTER(cr))
@@ -2183,7 +2199,8 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
         if ((bVV || bVNI) && !bStartingFromCpt && !bRerunMD)
         /*  ############### START FIRST UPDATE HALF-STEP FOR VV METHODS############### */
         {
-            if ((ir->eI==eiVV || ir->eI==eiVNI5 || ir->eI==eiVNI7 || ir->eI==eiVNI9) && bInitStep) 
+            //if ((ir->eI==eiVV || ir->eI==eiVNI5 || ir->eI==eiVNI7 || ir->eI==eiVNI9) && bInitStep) 
+            if ((ir->eI==eiVV || bVNI) && bInitStep) // MARIO
             {
                 /* if using velocity verlet with full time step Ekin,
                  * take the first half step only to compute the 
@@ -2213,7 +2230,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             /*#### UPDATE EXTENDED VARIABLES IN TROTTER FORMULATION */
 
             /* save the state */
-            if (bIterations && iterate.bIterate) { 
+            if (bIterations && iterate.bIterate) {
                 copy_coupling_state(state,bufstate,ekind,ekind_save,&(ir->opts));
             }
 
@@ -2273,7 +2290,8 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
                 /*bPres = (ir->eI==eiVV || IR_NPT_TROTTER(ir)); */
                     /*bTemp = ((ir->eI==eiVV &&(!bInitStep)) || (ir->eI==eiVVAK && IR_NPT_TROTTER(ir)));*/
                 bPres = TRUE;
-                bTemp = (((ir->eI==eiVV || ir->eI==eiVNI5 || ir->eI==eiVNI7 || ir->eI==eiVNI9) &&(!bInitStep)) || (ir->eI==eiVVAK));
+                //bTemp = (((ir->eI==eiVV || ir->eI==eiVNI5 || ir->eI==eiVNI7 || ir->eI==eiVNI9) &&(!bInitStep)) || (ir->eI==eiVVAK));
+                bTemp = (((ir->eI==eiVV || bVNI) &&(!bInitStep)) || (ir->eI==eiVVAK)); // MARIO
                 compute_globals(fplog,gstat,cr,ir,fr,ekind,state,state_global,mdatoms,nrnb,vcm,
                                 wcycle,enerd,force_vir,shake_vir,total_vir,pres,mu_tot,
                                 constr,NULL,FALSE,state->box,
@@ -3356,7 +3374,7 @@ reload: // goto point for momentum update retrials
                 
                 do_dr  = do_per_step(step,ir->nstdisreout);
                 do_or  = do_per_step(step,ir->nstorireout);
-                
+
                 if (stepIntegrator == 0 || stepIntegrator%n == 0) // New Integrator
                 {
                     print_ebin(outf->fp_ene,do_ene,do_dr,do_or,do_log?fplog:NULL,
