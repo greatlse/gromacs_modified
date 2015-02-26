@@ -1839,7 +1839,6 @@ void update_coords(FILE *fplog,
         case etrtVELOCITY1:
             coeffVel1 = 0 + 2*(stepIntegrator%n_int);
             /* Velocities */
-            printf("VELOCITY1 = %f\n",intCoeffs[coeffVel1]); // MARIO
             do_update_vv_vel(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
@@ -1851,7 +1850,6 @@ void update_coords(FILE *fplog,
             break;
         case etrtVELOCITY2:
             /* Velocities */
-            printf("VELOCITY1 = %f\n",intCoeffs[0]); // MARIO
             do_update_vv_vel(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
@@ -1863,7 +1861,6 @@ void update_coords(FILE *fplog,
             break;
         case etrtPOSITION:
             /* Positions */
-            printf("VELOCITY1 = %f\n",intCoeffs[1]); // MARIO
             do_update_vv_pos(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,

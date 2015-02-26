@@ -327,7 +327,7 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
                     period2 = GMX_FLOAT_MAX;
                 }
                 /* MARIO */
-                if (period2 < auxiliarperiod2)
+                if (period2 < auxiliarperiod2 && ir->eI == eiTWOSADAPT)
                 {
                     auxiliarperiod2 = period2;
                 }
@@ -370,9 +370,12 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
     }
 
     /* MARIO */
-    printf("\nADAPTIVE SCHEME for the integration\n");
-    printf("The fascest oscillation period found is %.1e ps\n",sqrt(auxiliarperiod2));
-    adaptive_optimization_scheme(ir,auxiliarperiod2,dt);
+    if (ir->eI == eiTWOSADAPT)
+    {
+        printf("\nADAPTIVE SCHEME for the integration\n");
+        printf("The fascest oscillation period found is %.1e ps\n",sqrt(auxiliarperiod2));
+        adaptive_optimization_scheme(ir,auxiliarperiod2,dt);
+    }
     /* MARIO */
     
     if (w_moltype != NULL)
