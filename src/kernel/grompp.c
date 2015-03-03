@@ -190,8 +190,9 @@ static void check_cg_sizes(const char *topfn,t_block *cgs,warninp_t wi)
 /* MARIO */
 static void adaptive_optimization_scheme(t_inputrec *ir, real auxiliarperiod2, double dt)
 {
+  #define EPS  1e-6
   double dt2,dt4;
-  double da,da_trial,da_opt,daux,drho1,drho2;
+  double da0,da1,da2,da_opt,daux,drho0,drho1,drho2;
 
   real auxiliarperiod = sqrt(auxiliarperiod2);
   real twopi = 2*M_PI;
@@ -201,50 +202,50 @@ static void adaptive_optimization_scheme(t_inputrec *ir, real auxiliarperiod2, d
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
   real dt_scaled = 2*dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper
-printf("dt_scaled = %f\n",dt_scaled);
 
   dt2   = sqr(dt_scaled);
   dt4   = sqr(dt2);
-  da    = 0.25;
-  daux  = sqr(2*sqr(da)*(0.5-da)*dt2+4*sqr(da)-6*da+1)*1e3;
-  daux  = daux/(2-da*dt2);
-  daux  = daux/(2-(0.5-da)*dt2);
-  daux  = daux/(1-da*(0.5-da)*dt2);
-  drho1 = dt4*daux*0.125;
+  da2   = 0.25;
+  daux  = sqr(2*sqr(da2)*(0.5-da2)*dt2+4*sqr(da2)-6*da2+1)*1e3;
+  daux  = daux/(2-da2*dt2);
+  daux  = daux/(2-(0.5-da2)*dt2);
+  daux  = daux/(1-da2*(0.5-da2)*dt2);
+  drho2 = dt4*daux*0.125;
+  da0   = 0.19;
+  daux  = sqr(2*sqr(da0)*(0.5-da0)*dt2+4*sqr(da0)-6*da0+1)*1e3;
+  daux  = daux/(2-da0*dt2);
+  daux  = daux/(2-(0.5-da0)*dt2);
+  daux  = daux/(1-da0*(0.5-da0)*dt2);
+  drho0 = dt4*daux*0.125;
 
-  int stop = 5; // the number of decimals in the solution are stop+1. By default stop = 5
-  double dincr = 1e-2;
-  da_trial = da;
-  while (stop != 0)
+  double dif = 1;
+  while (dif > EPS)
   {
-     da = da - dincr;
-     daux = sqr(2*sqr(da)*(0.5-da)*dt2+4*sqr(da)-6*da+1)*1e3;
-     daux = daux/(2-da*dt2);
-     daux = daux/(2-(0.5-da)*dt2);
-     daux = daux/(1-da*(0.5-da)*dt2);
-     drho2 = dt4*daux*0.125;
-//printf("rho1(%f) = %f, rho2(%f) = %f\n",da_trial,drho1,da,drho2); // MARIO
-     if (drho1 > drho2)
-     {
-//printf("HOLA\n"); // MARIO
-         drho1 = drho2;
-         da_trial = da;
+     da1 = (da0 + da2)*0.5;
+     da_opt = da1;
+     dif = da1 - da0;
+     daux = sqr(2*sqr(da1)*(0.5-da1)*dt2+4*sqr(da1)-6*da1+1)*1e3;
+     daux = daux/(2-da1*dt2);
+     daux = daux/(2-(0.5-da1)*dt2);
+     daux = daux/(1-da1*(0.5-da1)*dt2);
+     drho1 = dt4*daux*0.125;
+     if (drho2 < drho0)
+     {       
+         drho0 = drho1;
+         da0 = da1;
      }
      else
      {
-         dincr = dincr*1e-1;
-         stop = stop-1;
-         da = da_trial;
-         da_opt = da;
+         drho2 = drho1;
+         da2 = da1;
      }
   }
   ir->dIntA = da_opt;
-  printf("FINAL: The optimal parameter a is = %f\n",da_opt);
-  printf("ADAPTIVE SCHEME for the integration\n");
+  printf("The optimal parameter a is = %f\n",da_opt);
+  printf("ADAPTIVE SCHEME for the integration\n\n");
 }
 /* MARIO */
 
-//static void check_bonds_timestep(gmx_mtop_t *mtop,double dt,warninp_t wi)
 static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) // MARIO
 {
     /* This check is not intended to ensure accurate integration,
@@ -1551,7 +1552,6 @@ int main (int argc, char *argv[])
 
   if (EI_DYNAMICS(ir->eI) && ir->eI != eiBD)
   {
-      //check_bonds_timestep(sys,ir->delta_t,wi);
       check_bonds_timestep(sys,ir,wi); // MARIO
   }
 
