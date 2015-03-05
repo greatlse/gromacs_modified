@@ -116,10 +116,10 @@ enum {
    energy for temperature control */
 
 enum {
-  eiMD, eiSteep, eiCG, eiBD, eiSD2, eiNM, eiLBFGS, eiTPI, eiTPIC, eiSD1, eiVV, eiVVAK, eiTWOS, eiTWOSMIN, eiTWOSADAPT, eiTHREES, eiFOURS, eiNR
+  eiMD, eiSteep, eiCG, eiBD, eiSD2, eiNM, eiLBFGS, eiTPI, eiTPIC, eiSD1, eiVV, eiVVAK, eiTWOS, eiTWOSMIN, eiTWOSVERLET, eiTWOSADAPT, eiTHREES, eiFOURS, eiNR
 };
 #define EI_VV(e) ((e) == eiVV || (e) == eiVVAK)
-#define EI_VNI(e) ((e) == eiTWOS || (e) == eiTWOSMIN || (e) == eiTWOSADAPT || (e) == eiTHREES || (e) == eiFOURS)
+#define EI_VNI(e) ((e) == eiTWOS || (e) == eiTWOSMIN || (e) == eiTWOSVERLET || (e) == eiTWOSADAPT || (e) == eiTHREES || (e) == eiFOURS)
 #define EI_SD(e) ((e) == eiSD1 || (e) == eiSD2)
 #define EI_RANDOM(e) (EI_SD(e) || (e) == eiBD)
 /*above integrators may not conserve momenta*/
