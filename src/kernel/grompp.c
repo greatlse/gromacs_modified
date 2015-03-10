@@ -202,11 +202,12 @@ static void adaptive_optimization_scheme(t_inputrec *ir, real auxiliarperiod2, d
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
   real dt_scaled = 2*dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper
-  //real dt_scaled2 = dt/dt_warn; // PRUEBA
-  //printf("dt_scaled1 = %f and dt_scaled2 = %f\n",dt_scaled,dt_scaled2); // PRUEBA
+  real dt_scaled2 = dt/dt_warn; // PRUEBA
+  real dt_scaled3 = 2*dt*twopi/auxiliarperiod; // PRUEBA
+  printf("dt_scaled1 = %f, dt_scaled2 = %f and dt_scaled3 = %f\n",dt_scaled,dt_scaled2,dt_scaled3); // PRUEBA
 
   dt2   = sqr(dt_scaled);
-  //dt2   = sqr(dt_scaled2); // PRUEBA
+  dt2   = sqr(dt_scaled3); // PRUEBA
   dt4   = sqr(dt2);
   da2   = 0.25;
   daux  = sqr(2*sqr(da2)*(0.5-da2)*dt2+4*sqr(da2)-6*da2+1)*1e3;
