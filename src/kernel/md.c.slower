@@ -1289,7 +1289,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             n = 2;
             // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
             da1 = 0.5;
-            db1 = 0.1932, db2 = 1.0 - 2.0*db1;
+            db1 = 0.193183, db2 = 1.0 - 2.0*db1;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
             intCoeffs[2] = db2*0.5;
             intCoeffs[3] = da1, intCoeffs[4] = db1;
