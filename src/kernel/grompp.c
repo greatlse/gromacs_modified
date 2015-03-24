@@ -192,7 +192,7 @@ static void adaptive_optimization_scheme(t_inputrec *ir, real auxiliarperiod2, d
 {
   #define EPS  1e-6
   double dt2,dt4;
-  double da0,da1,da2,da_opt,daux,drho0,drho1,drho2;
+  double da0,da1,da2,da_opt,daux,drho0,drho1,drho2,drhoAux;
 
   real auxiliarperiod = sqrt(auxiliarperiod2);
   real twopi = 2*M_PI;
@@ -202,6 +202,7 @@ static void adaptive_optimization_scheme(t_inputrec *ir, real auxiliarperiod2, d
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
   real dt_scaled = dt*twopi/auxiliarperiod; // This is the timestep to do the comparison as it is done in the paper
+  real dt_trial = -0.1;
   printf("The time-step scaled is %f\n",dt_scaled);
 
   dt2   = sqr(dt_scaled);
@@ -225,11 +226,19 @@ static void adaptive_optimization_scheme(t_inputrec *ir, real auxiliarperiod2, d
      da1 = (da0 + da2)*0.5;
      da_opt = da1;
      dif = da1 - da0;
-     daux = sqr(2*sqr(da1)*(0.5-da1)*dt2+4*sqr(da1)-6*da1+1)*1e3;
-     daux = daux/(2-da1*dt2);
-     daux = daux/(2-(0.5-da1)*dt2);
-     daux = daux/(1-da1*(0.5-da1)*dt2);
-     drho1 = dt4*daux*0.125;
+     while (dt_trial < da1 + 0.1)
+     {
+        dt_trial = dt_trial + 0.1;
+        dt2 = sqr(dt_trial);
+        dt4 = sqr(dt2);
+        daux = sqr(2*sqr(da1)*(0.5-da1)*dt2+4*sqr(da1)-6*da1+1)*1e3;
+        daux = daux/(2-da1*dt2);
+        daux = daux/(2-(0.5-da1)*dt2);
+        daux = daux/(1-da1*(0.5-da1)*dt2);
+        drhoAux = dt4*daux*0.125;
+        if (drhoAux > drho1)
+           drho1 = drhoAux;
+     }
      if (drho2 < drho0)
      {       
          drho0 = drho1;
