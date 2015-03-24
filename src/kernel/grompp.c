@@ -201,7 +201,8 @@ static void adaptive_optimization_scheme(t_inputrec *ir, real auxiliarperiod2, d
   real dt_max    = auxiliarperiod/5;
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
-  real dt_scaled = 2*dt*twopi/auxiliarperiod; // This is the timestep to do the comparison as it is done in the paper
+  real dt_scaled = dt*twopi/auxiliarperiod; // This is the timestep to do the comparison as it is done in the paper
+  printf("The time-step scaled is %f\n",dt_scaled);
 
   dt2   = sqr(dt_scaled);
   dt4   = sqr(dt2);
@@ -241,7 +242,7 @@ static void adaptive_optimization_scheme(t_inputrec *ir, real auxiliarperiod2, d
      }
   }
   ir->dIntA = da_opt;
-  printf("The optimal parameter a is = %f\n",da_opt);
+  printf("The optimal parameter a is %f\n",da_opt);
   printf("ADAPTIVE SCHEME for the integration\n\n");
 }
 /* MARIO */
@@ -1552,7 +1553,9 @@ int main (int argc, char *argv[])
 
   if (EI_DYNAMICS(ir->eI) && ir->eI != eiBD)
   {
-      check_bonds_timestep(sys,ir,wi); // MARIO
+      /* MARIO */
+      check_bonds_timestep(sys,ir,wi);
+      /* MARIO */
   }
 
   if (EI_ENERGY_MINIMIZATION(ir->eI) && 0 == ir->nsteps)
