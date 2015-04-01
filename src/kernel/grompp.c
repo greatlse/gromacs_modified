@@ -202,31 +202,69 @@ static void adaptive_optimization_scheme(t_inputrec *ir, real auxiliarperiod2, d
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
   real dt_scaled = dt*twopi/auxiliarperiod; // This is the timestep to do the comparison as it is done in the paper
+//dt_scaled = 1;
   real dt_trial = -0.1;
   printf("The time-step scaled is %f\n",dt_scaled);
 
-  dt2   = sqr(dt_scaled);
-  dt4   = sqr(dt2);
+  //dt2   = sqr(dt_scaled);
+  //dt4   = sqr(dt2);
   da2   = 0.25;
-  daux  = sqr(2*sqr(da2)*(0.5-da2)*dt2+4*sqr(da2)-6*da2+1)*1e3;
-  daux  = daux/(2-da2*dt2);
-  daux  = daux/(2-(0.5-da2)*dt2);
-  daux  = daux/(1-da2*(0.5-da2)*dt2);
-  drho2 = dt4*daux*0.125;
-  da0   = 0.193183;
-  daux  = sqr(2*sqr(da0)*(0.5-da0)*dt2+4*sqr(da0)-6*da0+1)*1e3;
-  daux  = daux/(2-da0*dt2);
-  daux  = daux/(2-(0.5-da0)*dt2);
-  daux  = daux/(1-da0*(0.5-da0)*dt2);
-  drho0 = dt4*daux*0.125;
-
-  double dif = 1;
-  while (dif > EPS)
+  //daux  = sqr(2*sqr(da2)*(0.5-da2)*dt2+4*sqr(da2)-6*da2+1)*1e3;
+  //daux  = daux/(2-da2*dt2);
+  //daux  = daux/(2-(0.5-da2)*dt2);
+  //daux  = daux/(1-da2*(0.5-da2)*dt2);
+  //drho2 = dt4*daux*0.125;
+  drho2 = 0;
+  while (dt_trial < dt_scaled)
   {
-     da1 = (da0 + da2)*0.5;
-     da_opt = da1;
-     dif = da1 - da0;
-     while (dt_trial < da1 + 0.1)
+     dt_trial = dt_trial + 0.1;
+     dt2 = sqr(dt_trial);
+     dt4 = sqr(dt2);
+     daux = sqr(2*sqr(da2)*(0.5-da2)*dt2+4*sqr(da2)-6*da2+1)*1e3;
+     daux = daux/(2-da2*dt2);
+     daux = daux/(2-(0.5-da2)*dt2);
+     daux = daux/(1-da2*(0.5-da2)*dt2);
+     drhoAux = dt4*daux*0.125;
+     if (drhoAux > drho2)
+        drho2 = drhoAux;
+  }
+  dt_trial = -0.1;
+//  da0   = 0.193183;
+//da0 = 0.25;
+//printf("Bound 1 = %f, bound 2 = %f and dt_scaled = %f\n",sqrt(2/da0),sqrt(2/(0.5-da0)),dt_scaled);
+//  int test = 1;
+//  while (test == 1)
+//  {
+//     double dmin;
+//     if (sqrt(2/da0) < sqrt(2/(0.5-da0)))
+//        dmin = sqrt(2/da0);
+//     else
+//        dmin = sqrt(2/(0.5-da0));
+//     if (!(dt_scaled < dmin))
+//        da0 += 1e-6;
+//     else
+//        test = 0;
+//printf("da0 = %f\n",da0);
+//  }
+//  daux  = sqr(2*sqr(da0)*(0.5-da0)*dt2+4*sqr(da0)-6*da0+1)*1e3;
+//  daux  = daux/(2-da0*dt2);
+//  daux  = daux/(2-(0.5-da0)*dt2);
+//  daux  = daux/(1-da0*(0.5-da0)*dt2);
+//  drho0 = dt4*daux*0.125;
+//printf("Preliminar rhos: %f and %f\n",drho2,drho0);
+//  if (drho2 > drho0)
+//  {
+//     da_opt = da0;
+//     drho2 = drho0;
+  //}
+//  else
+     da_opt = da2;
+
+  da1 = 0;
+  while (da1 <= da2)
+  {
+     da1 += 1e-6;
+     while (dt_trial < dt_scaled)
      {
         dt_trial = dt_trial + 0.1;
         dt2 = sqr(dt_trial);
@@ -239,16 +277,13 @@ static void adaptive_optimization_scheme(t_inputrec *ir, real auxiliarperiod2, d
         if (drhoAux > drho1)
            drho1 = drhoAux;
      }
-     if (drho2 < drho0)
-     {       
-         drho0 = drho1;
-         da0 = da1;
-     }
-     else
+     dt_trial = -0.1;
+     if (drho2 > drho1)
      {
-         drho2 = drho1;
-         da2 = da1;
+        drho2 = drho1;
+        da_opt = da1;
      }
+     drho1 = 0;
   }
   ir->dIntA = da_opt;
   printf("The optimal parameter a is %f\n",da_opt);
@@ -301,6 +336,8 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
     
     w_moltype = NULL;
     auxiliarperiod2 = 10; // MARIO
+//    auxiliarperiod2 = 0; // MARIO
+//    int n = 0; // MARIO
     for(molt=0; molt<mtop->nmoltype; molt++)
     {
         moltype = &mtop->moltype[molt];
@@ -339,8 +376,11 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
                 }
                 /* MARIO */
                 if (period2 < auxiliarperiod2 && ir->eI == eiTWOSADAPT)
+                //if (ir->eI == eiTWOSADAPT)
                 {
+//n += 1;
                     auxiliarperiod2 = period2;
+                    //auxiliarperiod2 += sqrt(period2);
                 }
                 /* MARIO */
                 if (debug)
@@ -384,7 +424,9 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
     if (ir->eI == eiTWOSADAPT)
     {
         printf("\nADAPTIVE SCHEME for the integration\n");
-        printf("The fascest oscillation period found is %.1e ps\n",sqrt(auxiliarperiod2));
+        printf("The fastest oscillation period found is %f ps\n",sqrt(auxiliarperiod2));
+//printf("Average period = %f\n",auxiliarperiod2/n);
+        //adaptive_optimization_scheme(ir,sqr(auxiliarperiod2/n),dt);
         adaptive_optimization_scheme(ir,auxiliarperiod2,dt);
     }
     /* MARIO */
