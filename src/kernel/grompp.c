@@ -202,22 +202,16 @@ static void adaptive_optimization_scheme(t_inputrec *ir, real auxiliarperiod2, d
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
   real dt_scaled = dt*twopi/auxiliarperiod; // This is the timestep to do the comparison as it is done in the paper
-//dt_scaled = 1;
-  real dt_trial = -0.1;
+  dt_scaled = 2; // This line is here for testing
+  real dt_trial = 0;
   printf("The time-step scaled is %f\n",dt_scaled);
 
-  //dt2   = sqr(dt_scaled);
-  //dt4   = sqr(dt2);
   da2   = 0.25;
-  //daux  = sqr(2*sqr(da2)*(0.5-da2)*dt2+4*sqr(da2)-6*da2+1)*1e3;
-  //daux  = daux/(2-da2*dt2);
-  //daux  = daux/(2-(0.5-da2)*dt2);
-  //daux  = daux/(1-da2*(0.5-da2)*dt2);
-  //drho2 = dt4*daux*0.125;
   drho2 = 0;
+  /* Maximun value of rho for VV */
   while (dt_trial < dt_scaled)
   {
-     dt_trial = dt_trial + 0.1;
+     dt_trial = dt_trial + 0.01;
      dt2 = sqr(dt_trial);
      dt4 = sqr(dt2);
      daux = sqr(2*sqr(da2)*(0.5-da2)*dt2+4*sqr(da2)-6*da2+1)*1e3;
@@ -228,45 +222,19 @@ static void adaptive_optimization_scheme(t_inputrec *ir, real auxiliarperiod2, d
      if (drhoAux > drho2)
         drho2 = drhoAux;
   }
-  dt_trial = -0.1;
-//  da0   = 0.193183;
-//da0 = 0.25;
-//printf("Bound 1 = %f, bound 2 = %f and dt_scaled = %f\n",sqrt(2/da0),sqrt(2/(0.5-da0)),dt_scaled);
-//  int test = 1;
-//  while (test == 1)
-//  {
-//     double dmin;
-//     if (sqrt(2/da0) < sqrt(2/(0.5-da0)))
-//        dmin = sqrt(2/da0);
-//     else
-//        dmin = sqrt(2/(0.5-da0));
-//     if (!(dt_scaled < dmin))
-//        da0 += 1e-6;
-//     else
-//        test = 0;
-//printf("da0 = %f\n",da0);
-//  }
-//  daux  = sqr(2*sqr(da0)*(0.5-da0)*dt2+4*sqr(da0)-6*da0+1)*1e3;
-//  daux  = daux/(2-da0*dt2);
-//  daux  = daux/(2-(0.5-da0)*dt2);
-//  daux  = daux/(1-da0*(0.5-da0)*dt2);
-//  drho0 = dt4*daux*0.125;
-//printf("Preliminar rhos: %f and %f\n",drho2,drho0);
-//  if (drho2 > drho0)
-//  {
-//     da_opt = da0;
-//     drho2 = drho0;
-  //}
-//  else
-     da_opt = da2;
+  /* Maximun value of rho for VV */
+  
+  dt_trial = -0.01;
+  //dt_trial = dt_scaled - 0.1 -0.01; // This line is here because it might be interesting to look only at some epsilon around the time-step dt_scaled
 
+  da_opt = da2;
   da1 = 0;
   while (da1 <= da2)
   {
      da1 += 1e-6;
      while (dt_trial < dt_scaled)
      {
-        dt_trial = dt_trial + 0.1;
+        dt_trial = dt_trial + 0.01;
         dt2 = sqr(dt_trial);
         dt4 = sqr(dt2);
         daux = sqr(2*sqr(da1)*(0.5-da1)*dt2+4*sqr(da1)-6*da1+1)*1e3;
@@ -277,7 +245,7 @@ static void adaptive_optimization_scheme(t_inputrec *ir, real auxiliarperiod2, d
         if (drhoAux > drho1)
            drho1 = drhoAux;
      }
-     dt_trial = -0.1;
+     dt_trial = -0.01;
      if (drho2 > drho1)
      {
         drho2 = drho1;
