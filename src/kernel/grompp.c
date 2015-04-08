@@ -304,8 +304,8 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
     
     w_moltype = NULL;
     auxiliarperiod2 = 10; // MARIO
-//    auxiliarperiod2 = 0; // MARIO
-//    int n = 0; // MARIO
+    //auxiliarperiod2 = 0; // MARIO: averaged period
+    //int n = 0; // MARIO: averaged period
     for(molt=0; molt<mtop->nmoltype; molt++)
     {
         moltype = &mtop->moltype[molt];
@@ -344,11 +344,11 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
                 }
                 /* MARIO */
                 if (period2 < auxiliarperiod2 && ir->eI == eiTWOSADAPT)
-                //if (ir->eI == eiTWOSADAPT)
+                //if (ir->eI == eiTWOSADAPT) // averaged period
                 {
-//n += 1;
+                    //n += 1; // averaged period
                     auxiliarperiod2 = period2;
-                    //auxiliarperiod2 += sqrt(period2);
+                    //auxiliarperiod2 += sqrt(period2); // averaged period
                 }
                 /* MARIO */
                 if (debug)
@@ -393,9 +393,9 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
     {
         printf("\nADAPTIVE SCHEME for the integration\n");
         printf("The fastest oscillation period found is %f ps\n",sqrt(auxiliarperiod2));
-//printf("Average period = %f\n",auxiliarperiod2/n);
-        //adaptive_optimization_scheme(ir,sqr(auxiliarperiod2/n),dt);
+        //printf("The averaged oscillation period found is = %f ps\n",auxiliarperiod2/n); // averaged period
         adaptive_optimization_scheme(ir,auxiliarperiod2,dt);
+        //adaptive_optimization_scheme(ir,sqr(auxiliarperiod2/n),dt); // averaged period
     }
     /* MARIO */
     
