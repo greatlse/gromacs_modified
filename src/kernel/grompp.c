@@ -273,7 +273,7 @@ static void adaptive_optimization_scheme2(t_inputrec *ir, real auxiliarperiod2, 
   real dt_max    = auxiliarperiod/5;
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
-  real dt_scaled = dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper
+  real dt_scaled = 2*dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper
   //dt_scaled = 2; // This line is here for testing
   printf("The time-step scaled is %f\n",dt_scaled);
 
