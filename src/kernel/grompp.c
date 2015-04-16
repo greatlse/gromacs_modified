@@ -548,7 +548,7 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
         //adaptive_optimization_scheme1(ir,auxiliarperiod2,dt);
         //adaptive_optimization_scheme2(ir,auxiliarperiod2,dt);
         adaptive_optimization_scheme3(ir,auxiliarperiod2,dt);
-        //adaptive_optimization_scheme(ir,sqr(auxiliarperiod2/n),dt); // averaged period
+        //adaptive_optimization_scheme1(ir,sqr(auxiliarperiod2/n),dt); // averaged period
     }
     /* MARIO */
     
