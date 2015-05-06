@@ -546,8 +546,8 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
         printf("The fastest oscillation period found is %f ps\n",sqrt(auxiliarperiod2));
         //printf("The averaged oscillation period found is = %f ps\n",auxiliarperiod2/n); // averaged period
         //adaptive_optimization_scheme1(ir,auxiliarperiod2,dt);
-        //adaptive_optimization_scheme2(ir,auxiliarperiod2,dt);
-        adaptive_optimization_scheme3(ir,auxiliarperiod2,dt);
+        adaptive_optimization_scheme2(ir,auxiliarperiod2,dt);
+        //adaptive_optimization_scheme3(ir,auxiliarperiod2,dt);
         //adaptive_optimization_scheme1(ir,sqr(auxiliarperiod2/n),dt); // averaged period
     }
     /* MARIO */
