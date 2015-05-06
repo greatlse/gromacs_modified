@@ -1836,6 +1836,7 @@ void update_coords(FILE *fplog,
     case (eiTWOSMIN):
     case (eiTWOSVERLET):
     case (eiTWOSADAPT):
+    case (eiTWOSADAPT2):
         switch (UpdatePart) {
         case etrtVELOCITY1:
             coeffVel1 = 0 + 2*(stepIntegrator%n_int);

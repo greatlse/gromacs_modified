@@ -116,7 +116,7 @@ enum {
    energy for temperature control */
 
 enum {
-  eiMD, eiSteep, eiCG, eiBD, eiSD2, eiNM, eiLBFGS, eiTPI, eiTPIC, eiSD1, eiVV, eiVVAK, eiTWOS, eiTWOSMIN, eiTWOSVERLET, eiTWOSADAPT, eiTHREES, eiFOURS, eiNR
+  eiMD, eiSteep, eiCG, eiBD, eiSD2, eiNM, eiLBFGS, eiTPI, eiTPIC, eiSD1, eiVV, eiVVAK, eiTWOS, eiTWOSMIN, eiTWOSVERLET, eiTWOSADAPT, eiTWOSADAPT2, eiTHREES, eiFOURS, eiNR
 };
 #define EI_VV(e) ((e) == eiVV || (e) == eiVVAK)
 #define EI_VNI(e) ((e) == eiTWOS || (e) == eiTWOSMIN || (e) == eiTWOSVERLET || (e) == eiTWOSADAPT || (e) == eiTHREES || (e) == eiFOURS)

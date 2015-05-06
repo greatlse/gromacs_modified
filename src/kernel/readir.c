@@ -707,7 +707,7 @@ void check_ir(const char *mdparin,t_inputrec *ir, t_gromppopts *opts,
   }
 
   /* Adaptive optimization scheme STUFF */
-  if (ir->eI == eiTWOSADAPT)
+  if (ir->eI == eiTWOSADAPT || ir->eI == eiTWOSADAPT2)
   {
      sprintf(err_buf, "ADAPTIVE SCHEME: parameter for the integrator is calculated during the grompp routine\n");
      CHECK(ir->dIntA !=1);
