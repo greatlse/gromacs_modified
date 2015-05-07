@@ -568,7 +568,7 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
                     period2 = GMX_FLOAT_MAX;
                 }
                 /* MARIO */
-                if (period2 < auxiliarperiod2 && (ir->eI == eiTWOSADAPT || ir->eI == eiTWOSADAPT2)
+                if (period2 < auxiliarperiod2 && (ir->eI == eiTWOSADAPT || ir->eI == eiTWOSADAPT2))
                 //if (ir->eI == eiTWOSADAPT) // averaged period
                 {
                     //n += 1; // averaged period
