@@ -227,7 +227,6 @@ static void adaptive_optimization_scheme1(t_inputrec *ir, real auxiliarperiod2, 
   /* Maximun value of rho for two VV steps concatenated */
   
   dt_trial = -0.01;
-  //dt_trial = dt_scaled - 0.1 -0.01; // This line is here because it might be interesting to look only at some epsilon around the time-step dt_scaled
 
   da_opt = da2;
   da1 = 0;
@@ -278,6 +277,7 @@ static void adaptive_optimization_scheme2(t_inputrec *ir, real auxiliarperiod2, 
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
   real dt_scaled = 2*dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper
+  //real dt_scaled = dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper
   //dt_scaled = 2; // This line is here for testing
   printf("The time-step scaled is %f\n",dt_scaled);
 
@@ -301,7 +301,6 @@ static void adaptive_optimization_scheme2(t_inputrec *ir, real auxiliarperiod2, 
   /* Maximun value of rho for two VV steps concatenated */
   
   dt_trial = -0.01;
-  //dt_trial = dt_scaled - 0.1 -0.01; // This line is here because it might be interesting to look only at some epsilon around the time-step dt_scaled
 
   da_opt = da2;
   da1 = 0;
@@ -376,7 +375,6 @@ static void adaptive_optimization_scheme3(t_inputrec *ir, real auxiliarperiod2, 
   /* Maximun value of rho for two VV steps concatenated */
   
   dt_trial = -0.01;
-  //dt_trial = dt_scaled - 0.1 -0.01; // This line is here because it might be interesting to look only at some epsilon around the time-step dt_scaled
 
   da_opt = da2;
   da1 = 0;
@@ -449,7 +447,6 @@ static void adaptive_optimization_scheme_timestep(t_inputrec *ir, real auxiliarp
   /* Maximun value of rho for two VV steps concatenated */
   
   dt_trial = -0.01;
-  //dt_trial = dt_scaled - 0.1 -0.01; // This line is here because it might be interesting to look only at some epsilon around the time-step dt_scaled
 
   da_opt = da2;
   da1 = 0;
