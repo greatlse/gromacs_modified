@@ -1397,6 +1397,7 @@ should be reformulated as a velocity verlet method, since it has two parts */
         wallcycle_start(wcycle,ewcCONSTR);
         if ((EI_VV(inputrec->eI) || EI_VNI(inputrec->eI)) && bFirstHalf)
         {
+printf("CONSTRAIN1\n"); // PRUEBA
             constrain(NULL,bLog,bEner,constr,idef,
                       inputrec,ekind,cr,step,1,md,
                       state->x,state->v,state->v,
@@ -1406,6 +1407,7 @@ should be reformulated as a velocity verlet method, since it has two parts */
                       n_int); // CONSTRAINING
         }
         else
+printf("CONSTRAIN2\n"); // PRUEBA
         {
             constrain(NULL,bLog,bEner,constr,idef,
                       inputrec,ekind,cr,step,1,md,
@@ -1773,6 +1775,7 @@ void update_coords(FILE *fplog,
         alpha = 1.0 + DIM/((double)inputrec->opts.nrdf[0]); /* assuming barostat coupled to group 0. */
         switch (UpdatePart) {
         case etrtVELOCITY1:
+printf("VELOCITY1\n"); // PRUEBA
             if (inputrec->epc == epcANDERSEN)
             {
                 /* Velocity for the volume */
@@ -1791,6 +1794,7 @@ void update_coords(FILE *fplog,
                              0.5);
             break;
         case etrtVELOCITY2:
+printf("VELOCITY2\n"); // PRUEBA
             if (inputrec->epc != epcANDERSEN)
                 do_update_vv_vel(start,nrend,dt,
                                  ekind->tcstat,ekind->grpstat,
@@ -1814,6 +1818,7 @@ void update_coords(FILE *fplog,
             }
             break;
         case etrtPOSITION:
+printf("POSITION\n"); // PRUEBA
             if (inputrec->epc == epcANDERSEN)
             {
                 /* Velocity for the volume */
@@ -1839,6 +1844,7 @@ void update_coords(FILE *fplog,
     case (eiTWOSADAPT2):
         switch (UpdatePart) {
         case etrtVELOCITY1:
+printf("VELOCITY1\n"); // PRUEBA
             coeffVel1 = 0 + 2*(stepIntegrator%n_int);
             /* Velocities */
             do_update_vv_vel(start,nrend,dt,
@@ -1851,6 +1857,8 @@ void update_coords(FILE *fplog,
                              intCoeffs[coeffVel1]);
             break;
         case etrtVELOCITY2:
+printf("VELOCITY2\n"); // PRUEBA
+            coeffVel2 = 0 + 2*(stepIntegrator%n_int);
             /* Velocities */
             do_update_vv_vel(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
@@ -1859,9 +1867,10 @@ void update_coords(FILE *fplog,
                              md->cFREEZE,md->cACC,
                              state,force,inputrec->dMuMass,inputrec->dAlphaPress,
                              bExtended,alpha,
-                             intCoeffs[0]);
+                             intCoeffs[coeffVel2]);
             break;
         case etrtPOSITION:
+printf("POSITION\n"); // PRUEBA
             /* Positions */
             do_update_vv_pos(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
@@ -1888,15 +1897,17 @@ void update_coords(FILE *fplog,
                              intCoeffs[coeffVel1]);
             break;
         case etrtVELOCITY2:
+            coeffVel2 = 0 + 2*(stepIntegrator%n_int);
             /* Velocities */
             do_update_vv_vel(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
+
                              md->invmass,md->ptype,
                              md->cFREEZE,md->cACC,
                              state,force,inputrec->dMuMass,inputrec->dAlphaPress,
                              bExtended,alpha,
-                             intCoeffs[0]);
+                             intCoeffs[coeffVel2]);
             break;
         case etrtPOSITION:
             coeffPos = 1 + 2*(stepIntegrator%2);
@@ -1926,6 +1937,7 @@ void update_coords(FILE *fplog,
                              intCoeffs[coeffVel1]);
             break;
         case etrtVELOCITY2:
+            coeffVel2 = 0 + 2*(stepIntegrator%n_int);
             /* Velocities */
             do_update_vv_vel(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
@@ -1935,7 +1947,7 @@ void update_coords(FILE *fplog,
                              md->cFREEZE,md->cACC,
                              state,force,inputrec->dMuMass,inputrec->dAlphaPress,
                              bExtended,alpha,
-                             intCoeffs[0]);
+                             intCoeffs[coeffVel2]);
             break;
         case etrtPOSITION:
             coeffPos = 1 + 2*(stepIntegrator%3);

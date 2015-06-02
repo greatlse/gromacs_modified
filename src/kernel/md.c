@@ -380,7 +380,7 @@ static void compute_globals(FILE *fplog, gmx_global_stat_t gstat, t_commrec *cr,
     /* we calculate a full state kinetic energy either with full-step velocity verlet
        or half step where we need the pressure */
     
-    bEkinAveVel = (ir->eI==eiVV || ir->eI==eiTWOS || ir->eI==eiTWOSMIN || ir->eI==eiTWOSVERLET || ir->eI==eiTWOSADAPT || ir->eI == eiTWOSADAPT2 || ir->eI==eiTHREES || ir->eI==eiFOURS || (ir->eI==eiVVAK && bPres) || bReadEkin);
+    bEkinAveVel = (ir->eI==eiVV || ir->eI==eiTWOS || ir->eI==eiTWOSMIN || ir->eI==eiTWOSVERLET || ir->eI==eiTWOSADAPT || ir->eI==eiTWOSADAPT2 || ir->eI==eiTHREES || ir->eI==eiFOURS || (ir->eI==eiVVAK && bPres) || bReadEkin);
     
     /* in initalization, it sums the shake virial in vv, and to 
        sums ekinh_old in leapfrog (or if we are calculating ekinh_old) for other reasons */
@@ -1278,61 +1278,69 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             break;
         case (eiTWOS):
             n = 2;
-            // [b1, a1, b2, a1, b1,  0,  0,  0,  0]
+            // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
             da1 = 0.5;
             db1 = (3.0 - sqrt(3.0))/6.0, db2 = 1.0 - 2.0*db1;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
-            intCoeffs[2] = db2;
+            intCoeffs[2] = db2*0.5;
             intCoeffs[3] = da1, intCoeffs[4] = db1;
             break;
         case (eiTWOSMIN):
             n = 2;
-            // [b1, a1, b2, a1, b1,  0,  0,  0,  0]
+            // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
             da1 = 0.5;
             db1 = 0.193183, db2 = 1.0 - 2.0*db1;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
-            intCoeffs[2] = db2;
+            intCoeffs[2] = db2*0.5;
             intCoeffs[3] = da1, intCoeffs[4] = db1;
             break;
         case (eiTWOSVERLET):
             n = 2;
-            // [b1, a1, b2, a1, b1,  0,  0,  0,  0]
+            // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
             da1 = 0.5;
             db1 = sqr(0.5), db2 = 1.0 - 2.0*db1;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
-            intCoeffs[2] = db2;
+            intCoeffs[2] = db2*0.5;
             intCoeffs[3] = da1, intCoeffs[4] = db1;
             break;
         case (eiTWOSADAPT):
-        case (eiTWOSADAPT2):
             n = 2;
-            // [b1, a1, b2, a1, b1,  0,  0,  0,  0]
+            // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
             da1 = 0.5;
             db1 = ir->dIntA, db2 = 1.0 - 2.0*db1;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
-            intCoeffs[2] = db2;
+            intCoeffs[2] = db2*0.5;
+            intCoeffs[3] = da1, intCoeffs[4] = db1;
+            break;
+        case (eiTWOSADAPT2):
+            n = 2;
+            // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
+            da1 = 0.5;
+            db1 = ir->dIntA, db2 = 1.0 - 2.0*db1;
+            intCoeffs[0] = db1, intCoeffs[1] = da1;
+            intCoeffs[2] = db2*0.5;
             intCoeffs[3] = da1, intCoeffs[4] = db1;
             break;
         case (eiTHREES):
             n = 3;
-            // [b1, a1, b2, a2, b2, a1, b1,  0,  0]
+            // [b1, a1, b2/2, a2, b2/2, a1, b1,  0,  0]
             da1 = 0.29619504261126, da2 = 1.0 - 2.0*da1;
             db1 = 0.11888010966548, db2 = 0.5 - db1;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
-            intCoeffs[2] = db2, intCoeffs[3] = da2;
-            intCoeffs[4] = db2, intCoeffs[5] = da1;
+            intCoeffs[2] = db2*0.5, intCoeffs[3] = da2;
+            intCoeffs[4] = db2*0.5, intCoeffs[5] = da1;
             intCoeffs[6] = db1;
             break;
         case (eiFOURS):
             n = 4;
-            // [b1, a1, b2, a2, b3, a2, b2, a1, b1]
+            // [b1, a1, b2/2, a2, b3/2, a2, b2/2, a1, b1]
             da1 = 0.191667800000000000000, da2 = 0.5 - da1;
             db1 = 0.071353913450279725904;
             db2 = 0.268548791161230105820, db3 = 1.0 - 2.0*db1 - 2.0*db2;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
-            intCoeffs[2] = db2, intCoeffs[3] = da2;
-            intCoeffs[4] = db3, intCoeffs[5] = da2;
-            intCoeffs[6] = db2, intCoeffs[7] = da1;
+            intCoeffs[2] = db2*0.5, intCoeffs[3] = da2;
+            intCoeffs[4] = db3*0.5, intCoeffs[5] = da2;
+            intCoeffs[6] = db2*0.5, intCoeffs[7] = da1;
             intCoeffs[8] = db1;
             break;
         default:
@@ -1607,7 +1615,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             /* Constrain the initial coordinates and velocities */
             do_constrain_first(fplog,constr,ir,mdatoms,state,f,
                                graph,cr,nrnb,fr,top,shake_vir,
-                               1); // CONSTRAINING
+                               1);
         }
         if (vsite)
         {
@@ -1654,7 +1662,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             copy_mat(ekind->tcstat[i].ekinh,ekind->tcstat[i].ekinh_old);
         } 
     }
-    if (ir->eI != eiVV && ir->eI != eiTWOS && ir->eI != eiTWOSMIN && ir->eI != eiTWOSVERLET && ir->eI != eiTWOSADAPT && ir->eI != eiTWOSADAPT2 && ir->eI != eiTHREES && ir->eI != eiFOURS) 
+    if (ir->eI != eiVV && ir->eI != eiTWOS && ir->eI != eiTWOSMIN && ir->eI != eiTWOSVERLET && ir->eI != eiTWOSADAPT && ir->eI != eiTHREES && ir->eI != eiFOURS) 
     {
         enerd->term[F_TEMP] *= 2; /* result of averages being done over previous and current step,
                                      and there is no previous step */
@@ -3126,7 +3134,7 @@ reload: // goto point for momentum update retrials
                                    upd,bInitStep);
                 }
 
-                if (bVV || (bVNI && stepIntegrator%n == 0)) // New Integrators. Merged stages
+                if (bVV || bVNI)
                 {
                     /* velocity half-step update */
                     update_coords(fplog,step,ir,mdatoms,state,f,
