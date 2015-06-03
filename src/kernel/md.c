@@ -2217,7 +2217,6 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
         if ((bVV || bVNI) && !bStartingFromCpt && !bRerunMD)
         /*  ############### START FIRST UPDATE HALF-STEP FOR VV METHODS############### */
         {
-            //if ((ir->eI==eiVV || ir->eI==eiVNI5 || ir->eI==eiVNI7 || ir->eI==eiVNI9) && bInitStep) 
             if ((ir->eI==eiVV || bVNI) && bInitStep) // MARIO
             {
                 /* if using velocity verlet with full time step Ekin,
