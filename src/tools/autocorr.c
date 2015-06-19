@@ -706,7 +706,7 @@ void low_do_autocorr(const char *fn,const output_env_t oenv,const char *title,
     
     if (bFour)
       do_four_core(mode,nfour,nframes,nframes,c1[i],csum,ctmp);
-    else 
+    else
       do_ac_core(nframes,nout,ctmp,c1[i],nrestart,mode);
   }
   if (bVerbose)
@@ -778,7 +778,8 @@ void low_do_autocorr(const char *fn,const output_env_t oenv,const char *title,
   int j=0;
   double dIACF = 0.0; // Integrated Autocorrelation Function
   double dIACFabs = 0.0; // Integrated Autocorrelation Function using absolute values
-  double dESS = 0.0; // Effective sample size
+  double dESS = 0.0; // Effective Sample Size
+  double dESSabs = 0.0; // Effective Sample Size using absolute values
   for(i=0; i<nitem; i++)
   {
      dIACF = 0.0;
@@ -788,10 +789,12 @@ void low_do_autocorr(const char *fn,const output_env_t oenv,const char *title,
         dIACF += c1[i][j];
         dIACFabs += fabs(c1[i][j]);
      }
-     dESS = nout/(1 + 2*dIACF);
+     dESS = nout/dIACF;
+     dESSabs = nout/dIACFabs;
      printf("SS%d Integrated Autocorrelation Function IACF = %f \n", i, dIACF);
      printf("SS%d Absolute Integrated Autocorrelation Function IACF = %f \n", i, dIACFabs);
      printf("SS%d Effective Sample Size ESS = %f \n", i, dESS);
+     printf("SS%d Absolute Effective Sample Size ESS = %f \n", i, dESSabs);
   }
   /* GSHMC: Accumulate integrated autocorrelation */
 }
