@@ -80,6 +80,8 @@
 #include "gpp_tomorse.h"
 #include "mtop_util.h"
 #include "genborn.h"
+#include <time.h> // PRUEBA
+#include <sys/time.h> // PRUEBA
 
 static int rm_interactions(int ifunc,int nrmols,t_molinfo mols[])
 {
@@ -188,8 +190,7 @@ static void check_cg_sizes(const char *topfn,t_block *cgs,warninp_t wi)
 }
 
 /* MARIO */
-// First version: Optimization through the fascest oscillation. An averaged
-// oscilaltion can be used also.
+// First version: Optimization through the fascest oscillation
 static void adaptive_optimization_scheme1(t_inputrec *ir, real auxiliarperiod2, double dt)
 {
   #define EPS  1e-6
@@ -203,7 +204,8 @@ static void adaptive_optimization_scheme1(t_inputrec *ir, real auxiliarperiod2, 
   real dt_max    = auxiliarperiod/5;
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
-  real dt_scaled = dt*twopi/auxiliarperiod; // This is the timestep to do the comparison as it is done in the paper
+  //real dt_scaled = dt*twopi/auxiliarperiod; // This is the timestep to do the comparison as it is done in the paper
+  real dt_scaled = 2*dt*twopi/auxiliarperiod; // This is the timestep to do the comparison as it is done in the paper PRUEBA
   //dt_scaled = 2; // This line is here for testing
   printf("The time-step scaled is %f\n",dt_scaled);
 
@@ -277,7 +279,7 @@ static void adaptive_optimization_scheme2(t_inputrec *ir, real auxiliarperiod2, 
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
   real dt_scaled = 2*dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper
-  //real dt_scaled = dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper
+  //real dt_scaled = dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper PRUEBA
   //dt_scaled = 2; // This line is here for testing
   printf("The time-step scaled is %f\n",dt_scaled);
 
@@ -448,11 +450,15 @@ static void adaptive_optimization_scheme_timestep(t_inputrec *ir, real auxiliarp
   
   dt_trial = -0.01;
 
-  da_opt = da2;
+  //da_opt = da2;
   da1 = 0;
+while (da_opt < da2) // PRUEBA
+{
   while (da1 < da2)
   {
-     da1 += 1e-6;
+//printf("a_1 = %f\n",da1); // PRUEBA
+//printf("a_opt = %f\n",da_opt); // PRUEBA
+     da1 += 1e-2;
      while (dt_trial < dt_scaled)
      {
         dt_trial = dt_trial + 0.01;
@@ -469,17 +475,28 @@ static void adaptive_optimization_scheme_timestep(t_inputrec *ir, real auxiliarp
      dt_trial = -0.01;
      if (drho2 > drho1)
      {
+printf("HOLA\n"); // PRUEBA
         drho2 = drho1;
         da_opt = da1;
      }
      dt_scaled += 0.1;
      drho1 = 0;
   }
+dt_scaled += 1e-22; // PRUEBA
+}
   ir->dIntA = da_opt;
+  //ir->delta_t = ; // PRUEBA
   printf("The optimal parameter a is %f and the biggest time-step is %f\n",da_opt,dt_scaled*dt_warn*0.5);
   printf("ADAPTIVE SCHEME for the integration\n\n");
 }
 /* MARIO */
+
+/* PRUEBA */
+double timeval_diff(struct timeval *a, struct timeval *b)
+{
+  return (double)(a->tv_sec + (double)a->tv_usec/1000000) - (double)(b->tv_sec + (double)b->tv_usec/1000000);
+}
+/* PRUEBA */
 
 static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) // MARIO
 {
@@ -526,8 +543,6 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
     
     w_moltype = NULL;
     auxiliarperiod2 = 10; // MARIO
-    //auxiliarperiod2 = 0; // MARIO: averaged period
-    //int n = 0; // MARIO: averaged period
     for(molt=0; molt<mtop->nmoltype; molt++)
     {
         moltype = &mtop->moltype[molt];
@@ -566,11 +581,8 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
                 }
                 /* MARIO */
                 if (period2 < auxiliarperiod2 && (ir->eI == eiTWOSADAPT || ir->eI == eiTWOSADAPT2))
-                //if (ir->eI == eiTWOSADAPT) // averaged period
                 {
-                    //n += 1; // averaged period
                     auxiliarperiod2 = period2;
-                    //auxiliarperiod2 += sqrt(period2); // averaged period
                 }
                 /* MARIO */
                 if (debug)
@@ -611,15 +623,16 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
     }
 
     /* MARIO */
+    struct timeval t_ini, t_end; // PRUEBA
+    double secs; // PRUEBA
+    gettimeofday(&t_ini, NULL); // PRUEBA
     if (ir->eI == eiTWOSADAPT)
     {
         printf("\nADAPTIVE SCHEME for the integration\n");
         printf("The fastest oscillation period found is %f ps\n",sqrt(auxiliarperiod2));
-        //printf("The averaged oscillation period found is = %f ps\n",auxiliarperiod2/n); // averaged period
         //adaptive_optimization_scheme1(ir,auxiliarperiod2,dt);
         adaptive_optimization_scheme2(ir,auxiliarperiod2,dt);
         //adaptive_optimization_scheme3(ir,auxiliarperiod2,dt);
-        //adaptive_optimization_scheme1(ir,sqr(auxiliarperiod2/n),dt); // averaged period
     }
     else if (ir->eI == eiTWOSADAPT2)
     {
@@ -627,6 +640,10 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
         printf("The fastest oscillation period found is %f ps\n",sqrt(auxiliarperiod2));
         adaptive_optimization_scheme_timestep(ir,auxiliarperiod2,dt);
     }
+    gettimeofday(&t_end, NULL); // PRUEBA
+    secs = timeval_diff(&t_end, &t_ini); // PRUEBA
+    printf("Timing: %.16g miliseconds\n",secs*1000.0); // PRUEBA
+    printf("Timing: %.16g seconds\n",secs); // PRUEBA
     /* MARIO */
     
     if (w_moltype != NULL)
