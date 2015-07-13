@@ -1321,6 +1321,15 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             intCoeffs[2] = db2*0.5;
             intCoeffs[3] = da1, intCoeffs[4] = db1;
             break;
+        case (eiTWOSHOH):
+            n = 2;
+            // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
+            da1 = 0.5;
+            db1 = 0.25*(3 - sqrt(5)), db2 = 1.0 - 2.0*db1;
+            intCoeffs[0] = db1, intCoeffs[1] = da1;
+            intCoeffs[2] = db2*0.5;
+            intCoeffs[3] = da1, intCoeffs[4] = db1;
+            break;
         case (eiTHREES):
             n = 3;
             // [b1, a1, b2/2, a2, b2/2, a1, b1,  0,  0]
