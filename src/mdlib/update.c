@@ -1397,7 +1397,6 @@ should be reformulated as a velocity verlet method, since it has two parts */
         wallcycle_start(wcycle,ewcCONSTR);
         if ((EI_VV(inputrec->eI) || EI_VNI(inputrec->eI)) && bFirstHalf)
         {
-printf("CONSTRAIN1\n"); // PRUEBA
             constrain(NULL,bLog,bEner,constr,idef,
                       inputrec,ekind,cr,step,1,md,
                       state->x,state->v,state->v,
@@ -1407,7 +1406,6 @@ printf("CONSTRAIN1\n"); // PRUEBA
                       n_int); // CONSTRAINING
         }
         else
-printf("CONSTRAIN2\n"); // PRUEBA
         {
             constrain(NULL,bLog,bEner,constr,idef,
                       inputrec,ekind,cr,step,1,md,
@@ -1775,7 +1773,6 @@ void update_coords(FILE *fplog,
         alpha = 1.0 + DIM/((double)inputrec->opts.nrdf[0]); /* assuming barostat coupled to group 0. */
         switch (UpdatePart) {
         case etrtVELOCITY1:
-printf("VELOCITY1\n"); // PRUEBA
             if (inputrec->epc == epcANDERSEN)
             {
                 /* Velocity for the volume */
@@ -1794,7 +1791,6 @@ printf("VELOCITY1\n"); // PRUEBA
                              0.5);
             break;
         case etrtVELOCITY2:
-printf("VELOCITY2\n"); // PRUEBA
             if (inputrec->epc != epcANDERSEN)
                 do_update_vv_vel(start,nrend,dt,
                                  ekind->tcstat,ekind->grpstat,
@@ -1818,7 +1814,6 @@ printf("VELOCITY2\n"); // PRUEBA
             }
             break;
         case etrtPOSITION:
-printf("POSITION\n"); // PRUEBA
             if (inputrec->epc == epcANDERSEN)
             {
                 /* Velocity for the volume */
@@ -1838,13 +1833,12 @@ printf("POSITION\n"); // PRUEBA
         }
         break;
     case (eiTWOS):
-    case (eiTWOSMIN):
+    case (eiTWOSMINE):
     case (eiTWOSVERLET):
     case (eiTWOSADAPT):
     case (eiTWOSADAPT2):
         switch (UpdatePart) {
         case etrtVELOCITY1:
-printf("VELOCITY1\n"); // PRUEBA
             coeffVel1 = 0 + 2*(stepIntegrator%n_int);
             /* Velocities */
             do_update_vv_vel(start,nrend,dt,
@@ -1857,7 +1851,6 @@ printf("VELOCITY1\n"); // PRUEBA
                              intCoeffs[coeffVel1]);
             break;
         case etrtVELOCITY2:
-printf("VELOCITY2\n"); // PRUEBA
             coeffVel2 = 0 + 2*(stepIntegrator%n_int);
             /* Velocities */
             do_update_vv_vel(start,nrend,dt,
@@ -1870,7 +1863,6 @@ printf("VELOCITY2\n"); // PRUEBA
                              intCoeffs[coeffVel2]);
             break;
         case etrtPOSITION:
-printf("POSITION\n"); // PRUEBA
             /* Positions */
             do_update_vv_pos(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,

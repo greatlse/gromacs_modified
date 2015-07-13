@@ -312,9 +312,9 @@ typedef struct {
 
 #define IR_EXCL_FORCES(ir) (EEL_FULL((ir).coulombtype) || (EEL_RF((ir).coulombtype) && (ir).coulombtype != eelRF_NEC) || (ir).implicit_solvent != eisNO)
 /* use pointer definitions of ir here, since that's what's usually used in the code */
-#define IR_NVT_TROTTER(ir) ((((ir)->eI == eiVV) || ((ir)->eI == eiVVAK) || ((ir)->eI == eiTWOS) || ((ir)->eI == eiTWOSMIN) || ((ir)->eI == eiTWOSADAPT) || ((ir)->eI == eiTHREES) || ((ir)->eI == eiFOURS)) && ((ir)->etc == etcNOSEHOOVER))
+#define IR_NVT_TROTTER(ir) ((((ir)->eI == eiVV) || ((ir)->eI == eiVVAK) || ((ir)->eI == eiTWOS) || ((ir)->eI == eiTWOSMINE) || ((ir)->eI == eiTWOSADAPT) || ((ir)->eI == eiTHREES) || ((ir)->eI == eiFOURS)) && ((ir)->etc == etcNOSEHOOVER))
 
-#define IR_NPT_TROTTER(ir) ((((ir)->eI == eiVV) || ((ir)->eI == eiVVAK) || ((ir)->eI == eiTWOS) || ((ir)->eI == eiTWOSMIN) || ((ir)->eI == eiTWOSADAPT) || ((ir)->eI == eiTHREES) || ((ir)->eI == eiFOURS)) && ((ir)->epc == epcMTTK))
+#define IR_NPT_TROTTER(ir) ((((ir)->eI == eiVV) || ((ir)->eI == eiVVAK) || ((ir)->eI == eiTWOS) || ((ir)->eI == eiTWOSMINE) || ((ir)->eI == eiTWOSADAPT) || ((ir)->eI == eiTHREES) || ((ir)->eI == eiFOURS)) && ((ir)->epc == epcMTTK))
 
 #ifdef __cplusplus
 }
