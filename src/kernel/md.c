@@ -380,7 +380,7 @@ static void compute_globals(FILE *fplog, gmx_global_stat_t gstat, t_commrec *cr,
     /* we calculate a full state kinetic energy either with full-step velocity verlet
        or half step where we need the pressure */
     
-    bEkinAveVel = (ir->eI==eiVV || ir->eI==eiTWOS || ir->eI==eiTWOSMINE || ir->eI==eiTWOSVERLET || ir->eI==eiTWOSADAPT || ir->eI==eiTWOSADAPT2 || ir->eI==eiTWOSHOH || ir->eI==eiTHREES || ir->eI==eiFOURS || (ir->eI==eiVVAK && bPres) || bReadEkin);
+    bEkinAveVel = (ir->eI==eiVV || ir->eI==eiTWOS || ir->eI==eiTWOSMINE || ir->eI==eiTWOSVERLET || ir->eI==eiTWOSADAPT || ir->eI==eiTWOSADAPTdt || ir->eI==eiTWOSHOH || ir->eI==eiTHREES || ir->eI==eiFOURS || (ir->eI==eiVVAK && bPres) || bReadEkin);
     
     /* in initalization, it sums the shake virial in vv, and to 
        sums ekinh_old in leapfrog (or if we are calculating ekinh_old) for other reasons */
@@ -1312,7 +1312,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             intCoeffs[2] = db2*0.5;
             intCoeffs[3] = da1, intCoeffs[4] = db1;
             break;
-        case (eiTWOSADAPT2):
+        case (eiTWOSADAPTdt):
             n = 2;
             // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
             da1 = 0.5;
@@ -1671,7 +1671,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             copy_mat(ekind->tcstat[i].ekinh,ekind->tcstat[i].ekinh_old);
         } 
     }
-    if (ir->eI != eiVV && ir->eI != eiTWOS && ir->eI != eiTWOSMINE && ir->eI != eiTWOSVERLET && ir->eI != eiTWOSADAPT && ir->eI != eiTWOSADAPT2 && ir->eI != eiTWOSHOH && ir->eI != eiTHREES && ir->eI != eiFOURS) 
+    if (ir->eI != eiVV && ir->eI != eiTWOS && ir->eI != eiTWOSMINE && ir->eI != eiTWOSVERLET && ir->eI != eiTWOSADAPT && ir->eI != eiTWOSADAPTdt && ir->eI != eiTWOSHOH && ir->eI != eiTHREES && ir->eI != eiFOURS) 
     {
         enerd->term[F_TEMP] *= 2; /* result of averages being done over previous and current step,
                                      and there is no previous step */

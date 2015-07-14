@@ -1836,7 +1836,7 @@ void update_coords(FILE *fplog,
     case (eiTWOSMINE):
     case (eiTWOSVERLET):
     case (eiTWOSADAPT):
-    case (eiTWOSADAPT2):
+    case (eiTWOSADAPTdt):
     case (eiTWOSHOH):
         switch (UpdatePart) {
         case etrtVELOCITY1:

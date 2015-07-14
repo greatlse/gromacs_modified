@@ -580,7 +580,7 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
                     period2 = GMX_FLOAT_MAX;
                 }
                 /* MARIO */
-                if (period2 < auxiliarperiod2 && (ir->eI == eiTWOSADAPT || ir->eI == eiTWOSADAPT2))
+                if (period2 < auxiliarperiod2 && (ir->eI == eiTWOSADAPT || ir->eI == eiTWOSADAPTdt))
                 {
                     auxiliarperiod2 = period2;
                 }
@@ -634,7 +634,7 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
         adaptive_optimization_scheme2(ir,auxiliarperiod2,dt);
         //adaptive_optimization_scheme3(ir,auxiliarperiod2,dt);
     }
-    else if (ir->eI == eiTWOSADAPT2)
+    else if (ir->eI == eiTWOSADAPTdt)
     {
         printf("\nADAPTIVE SCHEME for the integration and the time-step\n");
         printf("The fastest oscillation period found is %f ps\n",sqrt(auxiliarperiod2));
