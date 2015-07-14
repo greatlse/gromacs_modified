@@ -1166,7 +1166,7 @@ static void compute_globals(FILE *fplog, gmx_global_stat_t gstat, t_commrec *cr,
 
     /* we calculate a full state kinetic energy either with full-step velocity verlet
        or half step where we need the pressure */
-    bEkinAveVel = (ir->eI==eiVV || ir->eI==eiTWOS || ir->eI==eiTWOSMINE || ir->eI==eiTWOSVERLET || ir->eI==eiTWOSADAPT || ir->eI==eiTHREES || ir->eI==eiFOURS || (ir->eI==eiVVAK && IR_NPT_TROTTER(ir) && bPres) || bReadEkin);
+    bEkinAveVel = (ir->eI==eiVV || ir->eI==eiTWOS || ir->eI==eiTWOSMINE || ir->eI==eiTWOSVERLET || ir->eI==eiTWOSADAPT || ir->eI==eiTWOSADAPT2 || ir->eI==eiTWOSHOH || ir->eI==eiTHREES || ir->eI==eiFOURS || (ir->eI==eiVVAK && IR_NPT_TROTTER(ir) && bPres) || bReadEkin);
 
     /* in initalization, it sums the shake virial in vv, and to
        sums ekinh_old in leapfrog (or if we are calculating ekinh_old for other reasons */
@@ -1938,6 +1938,24 @@ double do_md_membed(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
             da1 = 0.5;
             db1 = ir->dIntA, db2 = 1.0 - 2.0*db1;
+            intCoeffs[0] = db1, intCoeffs[1] = da1;
+            intCoeffs[2] = db2*0.5;
+            intCoeffs[3] = da1, intCoeffs[4] = db1;
+            break;
+        case (eiTWOSADAPT2):
+            n = 2;
+            // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
+            da1 = 0.5;
+            db1 = ir->dIntA, db2 = 1.0 - 2.0*db1;
+            intCoeffs[0] = db1, intCoeffs[1] = da1;
+            intCoeffs[2] = db2*0.5;
+            intCoeffs[3] = da1, intCoeffs[4] = db1;
+            break;
+        case (eiTWOSHOH):
+            n = 2;
+            // [b1, a1, b2/2, a1, b1,  0,  0,  0,  0]
+            da1 = 0.5;
+            db1 = 0.25*(3 - sqrt(5)), db2 = 1.0 - 2.0*db1;
             intCoeffs[0] = db1, intCoeffs[1] = da1;
             intCoeffs[2] = db2*0.5;
             intCoeffs[3] = da1, intCoeffs[4] = db1;
