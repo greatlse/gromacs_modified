@@ -281,6 +281,7 @@ static void adaptive_optimization_scheme2(t_inputrec *ir, real auxiliarperiod2, 
   real dt_scaled = 2*dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper
   //real dt_scaled = dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper PRUEBA
   //dt_scaled = 2; // This line is here for testing
+  dt_scaled = 0.6; // This line is here for testing
   printf("The time-step scaled is %f\n",dt_scaled);
 
   real dt_trial = 0;
@@ -305,7 +306,7 @@ static void adaptive_optimization_scheme2(t_inputrec *ir, real auxiliarperiod2, 
   dt_trial = -0.01;
 
   da_opt = da2;
-  da1 = 0;
+  da1 = 0.19;
   while (da1 <= da2)
   {
      da1 += 1e-6;
@@ -458,7 +459,7 @@ while (da_opt < da2) // PRUEBA
   {
 //printf("a_1 = %f\n",da1); // PRUEBA
 //printf("a_opt = %f\n",da_opt); // PRUEBA
-     da1 += 1e-2;
+     da1 += 1e-1;
      while (dt_trial < dt_scaled)
      {
         dt_trial = dt_trial + 0.01;
@@ -642,7 +643,6 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
     }
     gettimeofday(&t_end, NULL); // PRUEBA
     secs = timeval_diff(&t_end, &t_ini); // PRUEBA
-    printf("Timing: %.16g miliseconds\n",secs*1000.0); // PRUEBA
     printf("Timing: %.16g seconds\n",secs); // PRUEBA
     /* MARIO */
     
