@@ -490,7 +490,8 @@ static void adaptive_optimization_scheme3(t_inputrec *ir, real auxiliarperiod2, 
 // Version for the adaptivity in the time-step
 static void adaptive_optimization_scheme_timestep(t_inputrec *ir, real auxiliarperiod2, double dt)
 {
-  #define DELTA  1e-1
+  #define EPS    1e-6
+  #define DELTA  1e-2
   double ddiff;
   double dt2,dt4;
   double da1,da2,da_opt,daux,drho1,drho2,drhoAux;
@@ -505,7 +506,7 @@ static void adaptive_optimization_scheme_timestep(t_inputrec *ir, real auxiliarp
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
   real dt_scaled = 2*dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper
-  dt_scaled = 2; // This line is here for testing
+  //dt_scaled = 2; // This line is here for testing
   printf("The time-step scaled is %f\n",dt_scaled);
   /* Timestep declarations */
 
@@ -513,17 +514,21 @@ static void adaptive_optimization_scheme_timestep(t_inputrec *ir, real auxiliarp
 
   real dt_trial = -0.01;
   //da_opt = da2;
-  da1 = 0;
-  ddiff = 0;
+  ddiff = 1;
 
-  while (ddiff >= 0) // PRUEBA
+  results1 = rho_optimization_twos(dt_scaled,drho2);
+  da1 = results1.da1;
+  while (ddiff >= EPS) // PRUEBA
   {
-     //struct optimization results1 = rho_optimization_twos(dt_scaled,drho2);
-     results1 = rho_optimization_twos(dt_scaled,drho2);
      ddiff = drho2 - results1.drho1;
+printf("Diff = %f\n",ddiff); // PRUEBA
+     if (ddiff >= 0)
+        da1 = results1.da1;
      dt_scaled += DELTA;
+     results1 = rho_optimization_twos(dt_scaled,drho2);
   }
-  printf("The optimal parameter a is %f and the biggest time-step is %f\n",da_opt,dt_scaled*dt_warn*0.5);
+  //printf("The optimal parameter a is %f and the biggest time-step is %f\n",da1,dt_scaled*dt_warn*0.5);
+  printf("The optimal parameter a is %f and the biggest time-step is %f\n",da1,dt_scaled-DELTA);
   printf("ADAPTIVE SCHEME for the integration\n\n");
 }
 /* MARIO */
