@@ -80,8 +80,8 @@
 #include "gpp_tomorse.h"
 #include "mtop_util.h"
 #include "genborn.h"
-#include <time.h> // PRUEBA
-#include <sys/time.h> // PRUEBA
+#include <time.h> // MARIO time measure
+#include <sys/time.h> // MARIO time measure
 
 static int rm_interactions(int ifunc,int nrmols,t_molinfo mols[])
 {
@@ -190,24 +190,97 @@ static void check_cg_sizes(const char *topfn,t_block *cgs,warninp_t wi)
 }
 
 /* MARIO */
+double rho_optimization_VV(real dt_scaled)
+{
+  double dt2,dt4;
+  double daux,drhoAux;
+  double da2 = 0.25;
+  double drho2 = 0;
+  real dt_trial = 0;
+
+  while (dt_trial < dt_scaled)
+  {
+     dt_trial = dt_trial + 0.01;
+     dt2 = sqr(dt_trial);
+     dt4 = sqr(dt2);
+     daux = sqr(2*sqr(da2)*(0.5-da2)*dt2+4*sqr(da2)-6*da2+1)*1e3;
+     daux = daux/(2-da2*dt2);
+     daux = daux/(2-(0.5-da2)*dt2);
+     daux = daux/(1-da2*(0.5-da2)*dt2);
+     drhoAux = dt4*daux*0.125;
+     if (drhoAux > drho2)
+        drho2 = drhoAux;
+  }
+
+  return drho2;
+}
+/* MARIO */
+
+/* MARIO */
+struct optimization_rho{double drho1; double da1;};
+struct optimization_rho rho_optimization_twos(real dt_scaled, double drho2);
+struct optimization_rho rho_optimization_twos(real dt_scaled, double drho2)
+{
+  struct optimization_rho result;
+  double dt2,dt4;
+  double daux,drhoAux;
+  double da1,da2,da_opt,drho1;
+
+  real dt_trial = -0.01;
+
+  da1 = 0, da2 = 0.25, da_opt = da2;
+
+  while (da1 <= da2)
+  {
+     da1 += 1e-6;
+     while (dt_trial < dt_scaled)
+     {
+        dt_trial = dt_trial + 0.01;
+        dt2 = sqr(dt_trial);
+        dt4 = sqr(dt2);
+        daux = sqr(2*sqr(da1)*(0.5-da1)*dt2+4*sqr(da1)-6*da1+1)*1e3;
+        daux = daux/(2-da1*dt2);
+        daux = daux/(2-(0.5-da1)*dt2);
+        daux = daux/(1-da1*(0.5-da1)*dt2);
+        drhoAux = dt4*daux*0.125;
+        if (drhoAux > drho1)
+           drho1 = drhoAux;
+     }
+     dt_trial = -0.01;
+     if (drho2 > drho1)
+     {
+        drho2 = drho1;
+        da_opt = da1;
+     }
+     drho1 = 0;
+  }
+
+  result.drho1 = drho2;
+  result.da1 = da_opt;
+  return result;
+}
+/* MARIO */
+
+/* MARIO */
 // First version: Optimization through the fascest oscillation
 static void adaptive_optimization_scheme1(t_inputrec *ir, real auxiliarperiod2, double dt)
 {
-  #define EPS  1e-6
   double dt2,dt4;
-  double da0,da1,da2,da_opt,daux,drho0,drho1,drho2,drhoAux;
+  double da1,da2,da_opt,daux,drho1,drho2,drhoAux;
 
   real auxiliarperiod = sqrt(auxiliarperiod2);
   real twopi = 2*M_PI;
 
+  /* Timestep declarations */
   real dt_warn   = auxiliarperiod/10;
   real dt_max    = auxiliarperiod/5;
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
   //real dt_scaled = dt*twopi/auxiliarperiod; // This is the timestep to do the comparison as it is done in the paper
-  real dt_scaled = 2*dt*twopi/auxiliarperiod; // This is the timestep to do the comparison as it is done in the paper PRUEBA
+  real dt_scaled = 2*dt*twopi/auxiliarperiod; // This is the timestep to do the comparison as it is done in the paper ALTERNATIVE
   //dt_scaled = 2; // This line is here for testing
   printf("The time-step scaled is %f\n",dt_scaled);
+  /* Timestep declarations */
 
   real dt_trial = 0;
   da2   = 0.25;
@@ -267,22 +340,23 @@ static void adaptive_optimization_scheme1(t_inputrec *ir, real auxiliarperiod2, 
 // avoiding physical resonances.
 static void adaptive_optimization_scheme2(t_inputrec *ir, real auxiliarperiod2, double dt)
 {
-  #define EPS  1e-6
   double dt2,dt4;
-  double da0,da1,da2,da_opt,daux,drho0,drho1,drho2,drhoAux;
+  double da1,da2,da_opt,daux,drho1,drho2,drhoAux;
 
   real auxiliarperiod = sqrt(auxiliarperiod2);
   real twopi = 2*M_PI;
 
+  /* Timestep declarations */
   real dt_warn   = auxiliarperiod/10;
   real dt_max    = auxiliarperiod/5;
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
   real dt_scaled = 2*dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper
-  //real dt_scaled = dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper PRUEBA
+  //real dt_scaled = dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper ALTERNATIVE
   //dt_scaled = 2; // This line is here for testing
   dt_scaled = 0.6; // This line is here for testing
   printf("The time-step scaled is %f\n",dt_scaled);
+  /* Timestep declarations */
 
   real dt_trial = 0;
   da2   = 0.25;
@@ -343,13 +417,13 @@ static void adaptive_optimization_scheme2(t_inputrec *ir, real auxiliarperiod2, 
 // 1 fs are used (mainly atomistic systems).
 static void adaptive_optimization_scheme3(t_inputrec *ir, real auxiliarperiod2, double dt)
 {
-  #define EPS  1e-6
   double dt2,dt4;
-  double da0,da1,da2,da_opt,daux,drho0,drho1,drho2,drhoAux;
+  double da1,da2,da_opt,daux,drho1,drho2,drhoAux;
 
   real auxiliarperiod = sqrt(auxiliarperiod2);
   real twopi = 2*M_PI;
 
+  /* Timestep declarations */
   real dt_warn   = auxiliarperiod/10;
   real dt_max    = auxiliarperiod/5;
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
@@ -357,6 +431,7 @@ static void adaptive_optimization_scheme3(t_inputrec *ir, real auxiliarperiod2, 
   real dt_scaled = dt*1e3; // This is the timestep to do the comparison as it is done in the paper
   //dt_scaled = 2; // This line is here for testing
   printf("The time-step scaled is %f\n",dt_scaled);
+  /* Timestep declarations */
 
   real dt_trial = 0;
   da2   = 0.25;
@@ -416,88 +491,50 @@ static void adaptive_optimization_scheme3(t_inputrec *ir, real auxiliarperiod2, 
 static void adaptive_optimization_scheme_timestep(t_inputrec *ir, real auxiliarperiod2, double dt)
 {
   #define EPS  1e-6
+  #define DELTA  1e-1
+  double ddiff;
   double dt2,dt4;
-  double da0,da1,da2,da_opt,daux,drho0,drho1,drho2,drhoAux;
+  double da1,da2,da_opt,daux,drho1,drho2,drhoAux;
+  struct optimization_rho results1;
 
   real auxiliarperiod = sqrt(auxiliarperiod2);
   real twopi = 2*M_PI;
 
+  /* Timestep declarations */
   real dt_warn   = auxiliarperiod/10;
   real dt_max    = auxiliarperiod/5;
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
   real dt_scaled = 2*dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper
-  //dt_scaled = 2; // This line is here for testing
+  dt_scaled = 2; // This line is here for testing
   printf("The time-step scaled is %f\n",dt_scaled);
+  /* Timestep declarations */
 
-  real dt_trial = 0;
-  da2   = 0.25;
-  drho2 = 0;
-  /* Maximun value of rho for two VV steps concatenated */
-  while (dt_trial < dt_scaled)
-  {
-     dt_trial = dt_trial + 0.01;
-     dt2 = sqr(dt_trial);
-     dt4 = sqr(dt2);
-     daux = sqr(2*sqr(da2)*(0.5-da2)*dt2+4*sqr(da2)-6*da2+1)*1e3;
-     daux = daux/(2-da2*dt2);
-     daux = daux/(2-(0.5-da2)*dt2);
-     daux = daux/(1-da2*(0.5-da2)*dt2);
-     drhoAux = dt4*daux*0.125;
-     if (drhoAux > drho2)
-        drho2 = drhoAux;
-  }
-  /* Maximun value of rho for two VV steps concatenated */
-  
-  dt_trial = -0.01;
+  drho2 = rho_optimization_VV(dt_scaled); // Maximun value of rho for two VV steps concatenated
 
+  real dt_trial = -0.01;
   //da_opt = da2;
   da1 = 0;
-while (da_opt < da2) // PRUEBA
-{
-  while (da1 < da2)
+  ddiff = 0;
+
+  while (ddiff >= 0) // PRUEBA
   {
-//printf("a_1 = %f\n",da1); // PRUEBA
-//printf("a_opt = %f\n",da_opt); // PRUEBA
-     da1 += 1e-1;
-     while (dt_trial < dt_scaled)
-     {
-        dt_trial = dt_trial + 0.01;
-        dt2 = sqr(dt_trial);
-        dt4 = sqr(dt2);
-        daux = sqr(2*sqr(da1)*(0.5-da1)*dt2+4*sqr(da1)-6*da1+1)*1e3;
-        daux = daux/(2-da1*dt2);
-        daux = daux/(2-(0.5-da1)*dt2);
-        daux = daux/(1-da1*(0.5-da1)*dt2);
-        drhoAux = dt4*daux*0.125;
-        if (drhoAux > drho1)
-           drho1 = drhoAux;
-     }
-     dt_trial = -0.01;
-     if (drho2 > drho1)
-     {
-printf("HOLA\n"); // PRUEBA
-        drho2 = drho1;
-        da_opt = da1;
-     }
-     dt_scaled += 0.1;
-     drho1 = 0;
+     //struct optimization results1 = rho_optimization_twos(dt_scaled,drho2);
+     results1 = rho_optimization_twos(dt_scaled,drho2);
+     ddiff = drho2 - results1.drho1;
+     dt_scaled += DELTA;
   }
-dt_scaled += 1e-22; // PRUEBA
-}
-  ir->dIntA = da_opt;
-  //ir->delta_t = ; // PRUEBA
   printf("The optimal parameter a is %f and the biggest time-step is %f\n",da_opt,dt_scaled*dt_warn*0.5);
   printf("ADAPTIVE SCHEME for the integration\n\n");
 }
 /* MARIO */
 
-/* PRUEBA */
+/* MARIO time measure */
 double timeval_diff(struct timeval *a, struct timeval *b)
 {
   return (double)(a->tv_sec + (double)a->tv_usec/1000000) - (double)(b->tv_sec + (double)b->tv_usec/1000000);
 }
-/* PRUEBA */
+/* MARIO time measure */
 
 static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) // MARIO
 {
@@ -624,9 +661,11 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
     }
 
     /* MARIO */
-    struct timeval t_ini, t_end; // PRUEBA
-    double secs; // PRUEBA
-    gettimeofday(&t_ini, NULL); // PRUEBA
+    /* MARIO time measure */
+    struct timeval t_ini, t_end;
+    double secs;
+    gettimeofday(&t_ini, NULL);
+    /* MARIO time measure */
     if (ir->eI == eiTWOSADAPT)
     {
         printf("\nADAPTIVE SCHEME for the integration\n");
@@ -641,9 +680,11 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
         printf("The fastest oscillation period found is %f ps\n",sqrt(auxiliarperiod2));
         adaptive_optimization_scheme_timestep(ir,auxiliarperiod2,dt);
     }
-    gettimeofday(&t_end, NULL); // PRUEBA
-    secs = timeval_diff(&t_end, &t_ini); // PRUEBA
-    printf("Timing: %.16g seconds\n",secs); // PRUEBA
+    /* MARIO time measure */
+    gettimeofday(&t_end, NULL);
+    secs = timeval_diff(&t_end, &t_ini);
+    printf("Timing: %.16g seconds\n",secs);
+    /* MARIO time measure */
     /* MARIO */
     
     if (w_moltype != NULL)
