@@ -354,7 +354,6 @@ static void adaptive_optimization_scheme2(t_inputrec *ir, real auxiliarperiod2, 
   real dt_scaled = 2*dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper
   //real dt_scaled = dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper ALTERNATIVE
   //dt_scaled = 2; // This line is here for testing
-  dt_scaled = 0.6; // This line is here for testing
   printf("The time-step scaled is %f\n",dt_scaled);
   /* Timestep declarations */
 
@@ -490,7 +489,7 @@ static void adaptive_optimization_scheme3(t_inputrec *ir, real auxiliarperiod2, 
 // Version for the adaptivity in the time-step
 static void adaptive_optimization_scheme_timestep(t_inputrec *ir, real auxiliarperiod2, double dt)
 {
-  #define EPS    1e-6
+  #define EPS    1e-5
   #define DELTA  1e-2
   double ddiff;
   double dt2,dt4;
@@ -502,6 +501,7 @@ static void adaptive_optimization_scheme_timestep(t_inputrec *ir, real auxiliarp
 
   /* Timestep declarations */
   real dt_warn   = auxiliarperiod/10;
+printf("dt_warn = %f\n",dt_warn); // PRUEBA
   real dt_max    = auxiliarperiod/5;
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
@@ -521,14 +521,14 @@ static void adaptive_optimization_scheme_timestep(t_inputrec *ir, real auxiliarp
   while (ddiff >= EPS) // PRUEBA
   {
      ddiff = drho2 - results1.drho1;
-printf("Diff = %f\n",ddiff); // PRUEBA
-     if (ddiff >= 0)
+printf("Diff = %f and dt_scaled = %f\n",ddiff,dt_scaled); // PRUEBA
+     if (ddiff >= EPS)
         da1 = results1.da1;
      dt_scaled += DELTA;
      results1 = rho_optimization_twos(dt_scaled,drho2);
   }
   //printf("The optimal parameter a is %f and the biggest time-step is %f\n",da1,dt_scaled*dt_warn*0.5);
-  printf("The optimal parameter a is %f and the biggest time-step is %f\n",da1,dt_scaled-DELTA);
+  printf("The optimal parameter a is %f and the biggest time-step is %f equivalent %f fs\n",da1,dt_scaled-DELTA,1e3*(dt_scaled-DELTA)*0.5*dt_warn);
   printf("ADAPTIVE SCHEME for the integration\n\n");
 }
 /* MARIO */
