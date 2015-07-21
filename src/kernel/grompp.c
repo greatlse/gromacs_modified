@@ -490,7 +490,6 @@ static void adaptive_optimization_scheme3(t_inputrec *ir, real auxiliarperiod2, 
 // Version for the adaptivity in the time-step
 static void adaptive_optimization_scheme_timestep(t_inputrec *ir, real auxiliarperiod2, double dt)
 {
-  #define EPS  1e-6
   #define DELTA  1e-1
   double ddiff;
   double dt2,dt4;
