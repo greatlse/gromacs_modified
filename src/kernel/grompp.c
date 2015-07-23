@@ -501,7 +501,6 @@ static void adaptive_optimization_scheme_timestep(t_inputrec *ir, real auxiliarp
 
   /* Timestep declarations */
   real dt_warn   = auxiliarperiod/10;
-printf("dt_warn = %f\n",dt_warn); // PRUEBA
   real dt_max    = auxiliarperiod/5;
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
@@ -510,21 +509,34 @@ printf("dt_warn = %f\n",dt_warn); // PRUEBA
   printf("The time-step scaled is %f\n",dt_scaled);
   /* Timestep declarations */
 
-  drho2 = rho_calculation(dt_scaled,0.25); // Maximun value of rho for two VV steps concatenated
-
   real dt_trial = -0.01;
-  //da_opt = da2;
   ddiff1 = 1;
   ddiff2 = 1;
 
+  drho2 = rho_calculation(dt_scaled,0.25); // Maximun value of rho for two VV steps concatenated
+  drho1 = rho_calculation(dt_scaled,0.21178); 
+
+  while (ddiff2 >= EPS)
+  {
+     ddiff2 = drho2 - drho1;
+     dt_scaled += DELTA;
+     drho2 = rho_calculation(dt_scaled,0.25);
+     drho1 = rho_calculation(dt_scaled,0.21178);
+  }
+  printf("Optimal choice of the time-step:\n");
+  printf("The biggest time-step is %f equivalent to %f fs\n",dt_scaled-DELTA,1e3*(dt_scaled-DELTA)*0.5*dt_warn);
+
+  drho2 = rho_calculation(dt_scaled,0.25);
   results1 = rho_optimization_twos(dt_scaled,drho2);
   da1 = results1.da1;
+
   while (ddiff1 >= EPS)
   {
      ddiff1 = drho2 - results1.drho1;
      if (ddiff1 >= EPS)
         da1 = results1.da1;
      dt_scaled += DELTA;
+     drho2 = rho_calculation(dt_scaled,0.25);
      results1 = rho_optimization_twos(dt_scaled,drho2);
   }
   printf("Biggest time-step for which the adaptive scheme overcomes VV:\n");
@@ -532,15 +544,7 @@ printf("dt_warn = %f\n",dt_warn); // PRUEBA
 
   dt_scaled = 2*dt/dt_warn; // We rescale the time-step again
 
-  drho1 = rho_calculation(dt_scaled,0.21178); 
-  while (ddiff2 >= EPS)
-  {
-     ddiff2 = drho2 - drho1;
-     dt_scaled += DELTA;
-     drho1 = rho_calculation(dt_scaled,0.21178);
-  }
-  printf("Optimal choice of the time-step:\n");
-  printf("The biggest time-step is %f equivalent to %f fs\n",dt_scaled-DELTA,1e3*(dt_scaled-DELTA)*0.5*dt_warn);
+
   printf("ADAPTIVE SCHEME for the integration\n\n");
 }
 /* MARIO */
