@@ -190,11 +190,11 @@ static void check_cg_sizes(const char *topfn,t_block *cgs,warninp_t wi)
 }
 
 /* MARIO */
-double rho_optimization_VV(real dt_scaled)
+double rho_calculation(real dt_scaled, double da)
 {
   double dt2,dt4;
   double daux,drhoAux;
-  double da2 = 0.25;
+//  double da2 = 0.25;
   double drho2 = 0;
   real dt_trial = 0;
 
@@ -203,10 +203,10 @@ double rho_optimization_VV(real dt_scaled)
      dt_trial = dt_trial + 0.01;
      dt2 = sqr(dt_trial);
      dt4 = sqr(dt2);
-     daux = sqr(2*sqr(da2)*(0.5-da2)*dt2+4*sqr(da2)-6*da2+1)*1e3;
-     daux = daux/(2-da2*dt2);
-     daux = daux/(2-(0.5-da2)*dt2);
-     daux = daux/(1-da2*(0.5-da2)*dt2);
+     daux = sqr(2*sqr(da)*(0.5-da)*dt2+4*sqr(da)-6*da+1)*1e3;
+     daux = daux/(2-da*dt2);
+     daux = daux/(2-(0.5-da)*dt2);
+     daux = daux/(1-da*(0.5-da)*dt2);
      drhoAux = dt4*daux*0.125;
      if (drhoAux > drho2)
         drho2 = drhoAux;
@@ -491,7 +491,7 @@ static void adaptive_optimization_scheme_timestep(t_inputrec *ir, real auxiliarp
 {
   #define EPS    1e-5
   #define DELTA  1e-2
-  double ddiff;
+  double ddiff1,ddiff2;
   double dt2,dt4;
   double da1,da2,da_opt,daux,drho1,drho2,drhoAux;
   struct optimization_rho results1;
@@ -510,25 +510,37 @@ printf("dt_warn = %f\n",dt_warn); // PRUEBA
   printf("The time-step scaled is %f\n",dt_scaled);
   /* Timestep declarations */
 
-  drho2 = rho_optimization_VV(dt_scaled); // Maximun value of rho for two VV steps concatenated
+  drho2 = rho_calculation(dt_scaled,0.25); // Maximun value of rho for two VV steps concatenated
 
   real dt_trial = -0.01;
   //da_opt = da2;
-  ddiff = 1;
+  ddiff1 = 1;
+  ddiff2 = 1;
 
   results1 = rho_optimization_twos(dt_scaled,drho2);
   da1 = results1.da1;
-  while (ddiff >= EPS) // PRUEBA
+  while (ddiff1 >= EPS)
   {
-     ddiff = drho2 - results1.drho1;
-printf("Diff = %f and dt_scaled = %f\n",ddiff,dt_scaled); // PRUEBA
-     if (ddiff >= EPS)
+     ddiff1 = drho2 - results1.drho1;
+     if (ddiff1 >= EPS)
         da1 = results1.da1;
      dt_scaled += DELTA;
      results1 = rho_optimization_twos(dt_scaled,drho2);
   }
-  //printf("The optimal parameter a is %f and the biggest time-step is %f\n",da1,dt_scaled*dt_warn*0.5);
-  printf("The optimal parameter a is %f and the biggest time-step is %f equivalent %f fs\n",da1,dt_scaled-DELTA,1e3*(dt_scaled-DELTA)*0.5*dt_warn);
+  printf("Biggest time-step for which the adaptive scheme overcomes VV:\n");
+  printf("The optimal parameter a is %f and the biggest time-step is %f equivalent to %f fs\n",da1,dt_scaled-DELTA,1e3*(dt_scaled-DELTA)*0.5*dt_warn);
+
+  dt_scaled = 2*dt/dt_warn; // We rescale the time-step again
+
+  drho1 = rho_calculation(dt_scaled,0.21178); 
+  while (ddiff2 >= EPS)
+  {
+     ddiff2 = drho2 - drho1;
+     dt_scaled += DELTA;
+     drho1 = rho_calculation(dt_scaled,0.21178);
+  }
+  printf("Optimal choice of the time-step:\n");
+  printf("The biggest time-step is %f equivalent to %f fs\n",dt_scaled-DELTA,1e3*(dt_scaled-DELTA)*0.5*dt_warn);
   printf("ADAPTIVE SCHEME for the integration\n\n");
 }
 /* MARIO */
