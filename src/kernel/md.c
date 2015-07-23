@@ -2076,7 +2076,7 @@ double do_md(FILE *fplog,t_commrec *cr,int nfile,const t_filenm fnm[],
             }
         }
 
-        if (MASTER(cr) && do_log && !bFFscan && (stepIntegrator == 0 || stepIntegrator%n == 0)) // New Integrator
+        if (MASTER(cr) && do_log && !bFFscan && (stepIntegrator == 0 || stepIntegrator%n == 0)) // New Integrators
         {
             print_ebin_header(fplog,step,t,state->lambda);
         }
@@ -2941,8 +2941,9 @@ reload: // goto point for momentum update retrials
                     update_energyhistory(&state_global->enerhist,mdebin);
                 }
             }
-            write_traj(fplog,cr,outf,mdof_flags,top_global,
-                       step,t,state,state_global,f,f_global,&n_xtc,&x_xtc);
+            if(stepIntegrator%n == 0) // New Integrators
+                write_traj(fplog,cr,outf,mdof_flags,top_global,
+                           step,t,state,state_global,f,f_global,&n_xtc,&x_xtc);
             if (bCPT)
             {
                 nchkpt++;
