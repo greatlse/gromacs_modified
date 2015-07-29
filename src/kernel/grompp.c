@@ -541,10 +541,6 @@ static void adaptive_optimization_scheme_timestep(t_inputrec *ir, real auxiliarp
   }
   printf("Biggest time-step for which the adaptive scheme overcomes VV:\n");
   printf("The optimal parameter a is %f and the biggest time-step is %f equivalent to %f fs\n",da1,dt_scaled-DELTA,1e3*(dt_scaled-DELTA)*0.5*dt_warn);
-
-  dt_scaled = 2*dt/dt_warn; // We rescale the time-step again
-
-
   printf("ADAPTIVE SCHEME for the integration\n\n");
 }
 /* MARIO */
