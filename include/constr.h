@@ -139,7 +139,7 @@ gmx_bool constrain(FILE *log,gmx_bool bLog,gmx_bool bEner,
                       real lambda,real *dvdlambda,
                       rvec *v,tensor *vir,
                       t_nrnb *nrnb,int econq, gmx_bool bPscal, real veta, real vetanew,
-                      int n); // PRUEBA
+                      int n); // CONSTRAINING
 /*
  * When econq=econqCoord constrains coordinates xprime using th
  * directions in x, min_proj is not used.

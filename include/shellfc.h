@@ -72,7 +72,7 @@ int relax_shell_flexcon(FILE *log,t_commrec *cr,gmx_bool bVerbose,
 			       int natoms,gmx_bool *bConverged,
 			       gmx_vsite_t *vsite,
 			       FILE *fp_field,
-                               int n); // PRUEBA
+                               int n); // CONSTRAINING
 
 
 #ifdef __cplusplus
