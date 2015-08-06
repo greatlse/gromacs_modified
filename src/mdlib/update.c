@@ -1397,6 +1397,7 @@ should be reformulated as a velocity verlet method, since it has two parts */
         wallcycle_start(wcycle,ewcCONSTR);
         if ((EI_VV(inputrec->eI) || EI_VNI(inputrec->eI)) && bFirstHalf)
         {
+            // CONSTRAINING - This is the constraining after the VELOCITY1 update
             constrain(NULL,bLog,bEner,constr,idef,
                       inputrec,ekind,cr,step,1,md,
                       state->x,state->v,state->v,
@@ -1407,6 +1408,7 @@ should be reformulated as a velocity verlet method, since it has two parts */
         }
         else
         {
+            // CONSTRAINING - This is the constraining after the VELOCITY2 and POSITION updates
             constrain(NULL,bLog,bEner,constr,idef,
                       inputrec,ekind,cr,step,1,md,
                       state->x,xprime,NULL,
@@ -1842,6 +1844,7 @@ void update_coords(FILE *fplog,
         case etrtVELOCITY1:
             coeffVel1 = 0 + 2*(stepIntegrator%n_int);
             /* Velocities */
+//printf("VELOCITY1 = %f\n",intCoeffs[coeffVel1]); // PRUEBA
             do_update_vv_vel(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
@@ -1854,6 +1857,7 @@ void update_coords(FILE *fplog,
         case etrtVELOCITY2:
             coeffVel2 = 0 + 2*(stepIntegrator%n_int);
             /* Velocities */
+//printf("VELOCITY2 = %f\n",intCoeffs[coeffVel2]); // PRUEBA
             do_update_vv_vel(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,
@@ -1865,6 +1869,7 @@ void update_coords(FILE *fplog,
             break;
         case etrtPOSITION:
             /* Positions */
+//printf("POSITIONS = %f\n",intCoeffs[1]); // PRUEBA
             do_update_vv_pos(start,nrend,dt,
                              ekind->tcstat,ekind->grpstat,
                              inputrec->opts.acc,inputrec->opts.nFreeze,inputrec->epc,

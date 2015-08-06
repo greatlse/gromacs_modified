@@ -359,6 +359,7 @@ gmx_bool constrain(FILE *fplog,gmx_bool bLog,gmx_bool bEner,
     {
         switch (econq) {
         case (econqCoord):
+            // CONSTRAINING - This is the constraining after the VELOCITY2 and POSITION updates
             bOK = bshakef(fplog,constr->shaked,
                           homenr,md->invmass,constr->nblocks,constr->sblock,
                           idef,ir,box,x,xprime,nrnb,
@@ -366,6 +367,7 @@ gmx_bool constrain(FILE *fplog,gmx_bool bLog,gmx_bool bEner,
                           invdt,v,vir!=NULL,rmdr,constr->maxwarn>=0,econq,vetavar);
             break;
         case (econqVeloc):
+            // CONSTRAINING - This is the constraining after the VELOCITY1 update
             bOK = bshakef(fplog,constr->shaked,
                           homenr,md->invmass,constr->nblocks,constr->sblock,
                           idef,ir,box,x,min_proj,nrnb,

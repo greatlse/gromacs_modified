@@ -228,9 +228,11 @@ int vec_shakef(FILE *fplog,gmx_shakedata_t shaked,
     
     switch (econq) {
     case econqCoord:
+        // CONSTRAINING - This is the constraining after the VELOCITY2 and POSITION updates
         cshake(iatom,ncon,&nit,maxnit,dist2,prime[0],rij[0],M2,omega,invmass,tt,lagr,&error);
         break;
     case econqVeloc:
+        // CONSTRAINING - This is the constraining after the VELOCITY1 update
         crattle(iatom,ncon,&nit,maxnit,dist2,prime[0],rij[0],M2,omega,invmass,tt,lagr,&error,invdt,vetavar);
         break;
     }
