@@ -194,7 +194,6 @@ double rho_calculation(real dt_scaled, double da)
 {
   double dt2,dt4;
   double daux,drhoAux;
-//  double da2 = 0.25;
   double drho2 = 0;
   real dt_trial = 0;
 
@@ -351,8 +350,11 @@ static void adaptive_optimization_scheme2(t_inputrec *ir, real auxiliarperiod2, 
   real dt_max    = auxiliarperiod/5;
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
-  real dt_scaled = 2*dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper
-  //real dt_scaled = dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper ALTERNATIVE
+  real dt_scaled;
+  if(dt < 0.010) // PRUEBA
+      dt_scaled = dt/dt_warn; // This is the timestep to do the comparison ALTERNATIVE - THIS IS THE SCALING USED FOR VILLIN
+  else
+      dt_scaled = 2*dt/dt_warn; // This is the timestep to do the comparison - THIS IS THE SCALING USED FOR CG
   //dt_scaled = 2; // This line is here for testing
   printf("The time-step scaled is %f\n",dt_scaled);
   /* Timestep declarations */
@@ -586,6 +588,12 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
     char      warn_buf[STRLEN];
     double    dt = ir->delta_t; // MARIO
 
+    if(ir->eI == eiTWOSADAPT || ir->eI == eiTWOSADAPTdt) // MARIO PRUEBA
+    {
+        min_steps_warn /= 2;
+        min_steps_note /= 2;
+    }
+
     ip = mtop->ffparams.iparams;
 
     twopi2 = sqr(2*M_PI);
@@ -633,7 +641,7 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
                 {
                     period2 = GMX_FLOAT_MAX;
                 }
-                /* MARIO */
+                /* MARIO - We search the fastest oscillation period */
                 if (period2 < auxiliarperiod2 && (ir->eI == eiTWOSADAPT || ir->eI == eiTWOSADAPTdt))
                 {
                     auxiliarperiod2 = period2;
