@@ -588,7 +588,7 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
     char      warn_buf[STRLEN];
     double    dt = ir->delta_t; // MARIO
 
-    if(ir->eI == eiTWOSADAPT || ir->eI == eiTWOSADAPTdt) // MARIO PRUEBA
+    if(ir->eI == eiTWOS || ir->eI == eiTWOSADAPT || ir->eI == eiTWOSADAPTdt) // MARIO PRUEBA
     {
         min_steps_warn /= 2;
         min_steps_note /= 2;
