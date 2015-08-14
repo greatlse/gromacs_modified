@@ -337,7 +337,7 @@ static void adaptive_optimization_scheme1(t_inputrec *ir, real auxiliarperiod2, 
 /* MARIO */
 // Second version: The optimization is done using the GROMACS warning for
 // avoiding physical resonances.
-static void adaptive_optimization_scheme2(t_inputrec *ir, real auxiliarperiod2, double dt)
+static void adaptive_optimization_scheme2(t_inputrec *ir, t_gromppopts *opts, real auxiliarperiod2, double dt)
 {
   double dt2,dt4;
   double da1,da2,da_opt,daux,drho1,drho2,drhoAux;
@@ -351,10 +351,15 @@ static void adaptive_optimization_scheme2(t_inputrec *ir, real auxiliarperiod2, 
   real dt_limit1 = sqrt(2)*auxiliarperiod/twopi; // VV limit of 4.44 steps per oscillational period
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
   real dt_scaled;
-  if(dt < 0.010) // PRUEBA
-      dt_scaled = dt/dt_warn; // This is the timestep to do the comparison ALTERNATIVE - THIS IS THE SCALING USED FOR VILLIN
+  if(opts->nshake == eshHBONDS)
+  {
+      dt_scaled = 2*dt/(auxiliarperiod*(2/(2*twopi))); // This is the timestep to do the comparison ALTERNATIVE - THIS IS THE SCALING USED FOR VILLIN
+  }
   else
+  {
       dt_scaled = 2*dt/dt_warn; // This is the timestep to do the comparison - THIS IS THE SCALING USED FOR CG
+      //dt_scaled = dt/dt_warn; // This is the timestep to do the comparison ALTERNATIVE - THIS IS THE SCALING USED FOR VILLIN TESTS NEWNEWADAPTIVE
+  }
   //dt_scaled = 2; // This line is here for testing
   printf("The time-step scaled is %f\n",dt_scaled);
   /* Timestep declarations */
@@ -554,7 +559,7 @@ double timeval_diff(struct timeval *a, struct timeval *b)
 }
 /* MARIO time measure */
 
-static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) // MARIO
+static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi, t_gromppopts *opts) // MARIO
 {
     /* This check is not intended to ensure accurate integration,
      * rather it is to signal mistakes in the mdp settings.
@@ -695,7 +700,7 @@ static void check_bonds_timestep(gmx_mtop_t *mtop,t_inputrec *ir,warninp_t wi) /
         printf("\nADAPTIVE SCHEME for the integration\n");
         printf("The fastest oscillation period found is %f ps\n",sqrt(auxiliarperiod2));
         //adaptive_optimization_scheme1(ir,auxiliarperiod2,dt);
-        adaptive_optimization_scheme2(ir,auxiliarperiod2,dt);
+        adaptive_optimization_scheme2(ir,opts,auxiliarperiod2,dt);
         //adaptive_optimization_scheme3(ir,auxiliarperiod2,dt);
     }
     else if (ir->eI == eiTWOSADAPTdt)
@@ -1885,7 +1890,7 @@ int main (int argc, char *argv[])
   if (EI_DYNAMICS(ir->eI) && ir->eI != eiBD)
   {
       /* MARIO */
-      check_bonds_timestep(sys,ir,wi);
+      check_bonds_timestep(sys,ir,wi,opts); // PRUEBA
       /* MARIO */
   }
 
