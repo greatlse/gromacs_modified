@@ -353,14 +353,19 @@ static void adaptive_optimization_scheme2(t_inputrec *ir, t_gromppopts *opts, re
   real dt_scaled;
   if(opts->nshake == eshHBONDS)
   {
-      dt_scaled = 2*dt/(auxiliarperiod*(2/(2*twopi))); // This is the timestep to do the comparison ALTERNATIVE - THIS IS THE SCALING USED FOR VILLIN
+      //dt_scaled = 2*dt/(auxiliarperiod*(2/(2*twopi))); // This is the timestep to do the comparison ASUMING THAT THE INTERVAL OF STABILITY IS (0,(2/w)/2) ie HALF OF THE RESONANCE OF SECOND ORDER - TESTS CALLED LAST
+      //dt_scaled = 2*dt/(auxiliarperiod*(sqrt(3)/(2*twopi))); // This is the timestep to do the comparison ASUMING THAT THE INTERVAL OF STABILITY IS (0,(sqrt(3)/w)/2) ie HALF OF THE RESONANCE OF THIRD ORDER - TESTS CALLED 3LAST
+      //dt_scaled = 2*dt/dt_max; // This is the timestep to do the comparison ASUMING THAT THE INVERVAL OF STABILITY IS (0,sqrt(2)) ie THE RESONANCE OF FOURTH ORDER - TESTS CALLED NEW
+      dt_scaled = 2*dt/(auxiliarperiod*(1.176/(twopi))); // This is the timestep to do the comparison ASUMING THAT THE INTERVAL OF STABILITY IS (0,1.176) ie THE RESONANCE OF FIFTH ORDER
   }
   else
   {
-      dt_scaled = 2*dt/dt_warn; // This is the timestep to do the comparison - THIS IS THE SCALING USED FOR CG
-      //dt_scaled = dt/dt_warn; // This is the timestep to do the comparison ALTERNATIVE - THIS IS THE SCALING USED FOR VILLIN TESTS NEWNEWADAPTIVE
+      dt_scaled = 2*dt/dt_warn; // This is the timestep to do the comparison - THIS IS THE SCALING USED FOR CG - ASUMING THAT THE INTERVAL OF STABILITY IS (O,sqrt(2)/2) ie HALF OF THE RESONANCE OF SECOND ORDER
   }
   //dt_scaled = 2; // This line is here for testing
+  /* TIJANA */
+  //printf("WARNING: We are using the code for TIJANA\n");  auxiliarperiod = twopi*0.015*0.5;  dt_warn   = auxiliarperiod/twopi;  dt_max    = 2*auxiliarperiod/twopi;  dt_scaled = dt/dt_warn;
+  /* TIJANA */
   printf("The time-step scaled is %f\n",dt_scaled);
   /* Timestep declarations */
 
@@ -513,6 +518,9 @@ static void adaptive_optimization_scheme_timestep(t_inputrec *ir, real auxiliarp
   real dt_limit2 = 2*auxiliarperiod/twopi; // VV limit of dt w < 2
   real dt_scaled = 2*dt/dt_warn; // This is the timestep to do the comparison as it is done in the paper
   //dt_scaled = 2; // This line is here for testing
+  /* TIJANA */
+  //printf("WARNING: We are using the code for TIJANA\n");   auxiliarperiod = twopi*0.015*0.5;  dt_warn   = auxiliarperiod/twopi;  dt_max    = 2*auxiliarperiod/twopi;  dt_scaled = dt/dt_warn;
+  /* TIJANA */
   printf("The time-step scaled is %f\n",dt_scaled);
   /* Timestep declarations */
 
@@ -532,6 +540,7 @@ static void adaptive_optimization_scheme_timestep(t_inputrec *ir, real auxiliarp
   }
   printf("Optimal choice of the time-step:\n");
   printf("The biggest time-step is %f equivalent to %f fs\n",dt_scaled-DELTA,1e3*(dt_scaled-DELTA)*0.5*dt_warn);
+  //printf("The biggest time-step is %f equivalent to %f fs\n",dt_scaled-DELTA,1e3*(dt_scaled-DELTA)*dt_warn); // TIJANA
 
   drho2 = rho_calculation(dt_scaled,0.25);
   results1 = rho_optimization_twos(dt_scaled,drho2);
@@ -548,6 +557,7 @@ static void adaptive_optimization_scheme_timestep(t_inputrec *ir, real auxiliarp
   }
   printf("Biggest time-step for which the adaptive scheme overcomes VV:\n");
   printf("The optimal parameter a is %f and the biggest time-step is %f equivalent to %f fs\n",da1,dt_scaled-DELTA,1e3*(dt_scaled-DELTA)*0.5*dt_warn);
+  //printf("The optimal parameter a is %f and the biggest time-step is %f equivalent to %f fs\n",da1,dt_scaled-DELTA,1e3*(dt_scaled-DELTA)*dt_warn); // TIJANA
   printf("ADAPTIVE SCHEME for the integration\n\n");
 }
 /* MARIO */
@@ -1890,7 +1900,7 @@ int main (int argc, char *argv[])
   if (EI_DYNAMICS(ir->eI) && ir->eI != eiBD)
   {
       /* MARIO */
-      check_bonds_timestep(sys,ir,wi,opts); // PRUEBA
+      check_bonds_timestep(sys,ir,wi,opts); 
       /* MARIO */
   }
 
